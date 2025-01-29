@@ -1,7 +1,7 @@
 BITS 32
 
-VGA_WIDTH equ
-VGA_HEIGHT equ
+VGA_WIDTH equ 80
+VGA_HEIGHT equ 25
 
 VGA_COLOR_BLACK equ 0
 VGA_COLOR_BLUE equ 1
@@ -26,7 +26,7 @@ kernel_main:
   mov dl, VGA_COLOR_BLACK
   call terminal_set_colour
 
-  mov esi ,set_string
+  mov esi, hello_string
   call terminal_write_string
   jmp $
 
