@@ -20,8 +20,8 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    		export TARGET=i386-elf
-    		echo "OS Development Environment Ready"
-    		echo "Target architecture: $TARGET"
-    		'';
+    export TARGET=i386-elf
+    echo "OS Development Environment Ready"
+    echo "Target architecture: $TARGET"
+  '';
 }
