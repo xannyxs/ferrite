@@ -22,3 +22,5 @@ https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-arc
 Operating Systems: Three Easy Pieces : https://pages.cs.wisc.edu/~remzi/OSTEP/
 
 `nixpkgs` cross-compiler: https://nix.dev/tutorials/cross-compilation.html
+
+Rust Kernel Blog: https://os.phil-opp.com/minimal-rust-kernel/
