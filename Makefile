@@ -76,7 +76,7 @@ fclean: clean
 
 re: clean all
 
-bear:
+bear: clean
 	bear -- make
 
 .PHONY: all clean fclean re bear
