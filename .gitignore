@@ -1,7 +1,9 @@
 # Project based
 *.bin
 *.iso
+.cache/
 isodir/
+compile_commands.json
 
 # Prerequisites
 *.d

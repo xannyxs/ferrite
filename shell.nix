@@ -17,6 +17,9 @@ pkgs.mkShell {
     nasm
     grub2
     xorriso
+
+    # Neovim needs its own way to find these paths
+    bear
   ];
 
   shellHook = ''
