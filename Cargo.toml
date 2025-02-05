@@ -1,0 +1,20 @@
+[package]
+name = "rust_kernel"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+panic = "abort"
+opt-level = 2
+
+[profile.release]
+panic = "abort"
+
+# [[bin]]
+# name = "maestro"
+# path = "src/kernel/main.rs"
+
+[lib]
+name = "kfs"
+path = "src/kernel/main.rs"
+crate-type = ["staticlib"]

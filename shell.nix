@@ -1,30 +1,34 @@
 {
   pkgs ? import <nixpkgs> { },
 }:
+
 let
-  pkgs = import <nixpkgs> {
-    crossSystem = {
-      config = "i386-elf";
-      system = "i686-unknown-none";
-    };
-  };
+  crossToolchain = pkgs.pkgsCross.i686-embedded.buildPackages.gcc;
 in
 pkgs.mkShell {
-  nativeBuildInputs = with pkgs.buildPackages; [
-    gcc
-    binutils
-    gnumake
+  buildInputs = with pkgs; [
+    crossToolchain
     nasm
-    grub2
+    gdb
+    gnumake
+    binutils
     xorriso
 
-    # Neovim needs its own way to find these paths
+    # Rust specific
+    pkg-config
+    rustup
+    rustfmt
+    clippy
+
+    # Bootloading
+    grub2
+
     bear
   ];
 
   shellHook = ''
-    export TARGET=i386-elf
-    echo "OS Development Environment Ready"
-    echo "Target architecture: $TARGET"
+    rustup default nightly
+    rustup component add rust-src
+    echo "Development environment ready!"
   '';
 }

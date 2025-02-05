@@ -1,82 +1,36 @@
-# Compiler and flags
-CC = $(if $(TARGET),$(TARGET)-gcc,gcc)
-AS = nasm
-LD = i386-elf-ld
+QEMU=qemu-system-i386
+CARGO=cargo
 
-# Flags
-LDFLAGS = -ffreestanding -nostdlib -nodefaultlibs -lgcc
-CFLAGS ?= -O2 -g
-CFLAGS := $(CFLAGS) -ffreestanding -Wall -Wextra \
-                    -fno-builtin \
-                    -fno-exceptions \
-                    -fno-stack-protector
+NAME=kfs.elf
 
-# Directories
-KERNEL_DIR = src/kernel
-ARCH_DIR = src/arch/i386
-LIBC_DIR = src/libc
-BUILD_DIR = build
+AS=nasm
+ASFLAGS=-felf32
 
-# Include directories
-INCLUDE_DIRS = -I$(KERNEL_DIR)/include \
-               -I$(LIBC_DIR)/include \
-               -I$(ARCH_DIR) \
-               -I$(KERNEL_DIR)/include/kernel
+LD=ld
+LDFLAGS=-n -nostdlib -m elf_i386
 
-# Update CFLAGS to include header directories
-CFLAGS += $(INCLUDE_DIRS)
+KLIB=libkfs.a # TODO debug ? release ?
 
-# Source files - using find to get all .c files recursively
-KERNEL_SRCS = $(wildcard $(KERNEL_DIR)/*.c) \
-              $(wildcard $(ARCH_DIR)/*.c)
-LIBC_SRCS = $(shell find $(LIBC_DIR) -name '*.c')
-ASM_SRCS = $(wildcard $(ARCH_DIR)/*.asm)
 
-# Object files - maintain directory structure in build directory
-KERNEL_OBJS = $(KERNEL_SRCS:%.c=$(BUILD_DIR)/%.o)
-LIBC_OBJS = $(LIBC_SRCS:%.c=$(BUILD_DIR)/%.o)
-ASM_OBJS = $(ASM_SRCS:%.asm=$(BUILD_DIR)/%.o)
+all: $(NAME)
 
-# All objects combined
-ALL_OBJS = $(KERNEL_OBJS) $(LIBC_OBJS) $(ASM_OBJS)
+$(NAME): $(KLIB) asm link
 
-# The kernel binary
-KERNEL = $(BUILD_DIR)/myos.bin
+$(KLIB):
+	$(CARGO) build --target "src/arch/x86/x86.json"
 
-# Build targets
-all: $(BUILD_DIR) $(KERNEL)
+asm:
+	$(AS) $(ASFLAGS) src/arch/x86/boot.asm -o target/boot.o
 
-# Create necessary build directories
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)/$(KERNEL_DIR)
-	mkdir -p $(BUILD_DIR)/$(ARCH_DIR)
-	mkdir -p $(BUILD_DIR)/$(LIBC_DIR)/stdio
-	mkdir -p $(BUILD_DIR)/$(LIBC_DIR)/stdlib
-	mkdir -p $(BUILD_DIR)/$(LIBC_DIR)/string
+link:
+	$(LD) $(LDFLAGS) -T src/arch/x86/x86.ld -o $(NAME) target/boot.o target/x86/debug/$(KLIB) # TODO debug ?
 
-# Link everything together
-$(KERNEL): $(ALL_OBJS)
-	$(CC) -T $(ARCH_DIR)/linker.ld -o $@ $(LDFLAGS) $^
-
-# Compile C files
-$(BUILD_DIR)/%.o: %.c
-	@mkdir -p $(dir $@)
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-# Compile assembly files
-$(BUILD_DIR)/%.o: %.asm
-	@mkdir -p $(dir $@)
-	$(AS) -f elf32 $< -o $@
-
-# Clean rules
 clean:
-	rm -rf $(BUILD_DIR)
+	$(CARGO) clean
+	rm -f $(NAME)
 
-fclean: clean
+run: $(NAME)
+	$(QEMU) -kernel $(NAME)
 
-re: clean all
-
-bear: clean
-	bear -- make
-
-.PHONY: all clean fclean re bear
+run_debug: $(NAME)
+	$(QEMU) -kernel $(NAME) -no-reboot -serial stdio -d int -D qemu.log

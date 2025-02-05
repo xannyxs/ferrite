@@ -1,4 +1,6 @@
 # Project based
+kfs.elf
+/target
 *.bin
 *.iso
 .cache/
