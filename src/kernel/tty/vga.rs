@@ -1,4 +1,8 @@
-#[derive(Debug)]
+pub const VGA_WIDTH: usize = 80;
+pub const VGA_HEIGHT: usize = 25;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum VgaColour {
 	Black = 0,
@@ -19,16 +23,24 @@ pub enum VgaColour {
 	White = 15,
 }
 
-pub const VGA_WIDTH: usize = 80;
-pub const VGA_HEIGHT: usize = 25;
-pub const VGA_MEMORY: *mut u16 = 0xb8000 as *mut u16;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct ColourCode(u8);
 
-#[inline]
-pub fn vga_entry_colour(foreground: VgaColour, background: VgaColour) -> u8 {
-	(foreground as u8) | ((background as u8) << 4)
+impl ColourCode {
+	pub fn new(foreground: VgaColour, background: VgaColour) -> ColourCode {
+		ColourCode((background as u8) << 4 | (foreground as u8))
+	}
 }
 
-#[inline]
-pub fn vga_entry(c: u8, colour: u8) -> u16 {
-	(c as u16) | (colour as u16) << 8
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub struct VgaChar {
+	pub ascii_character: u8,
+	pub colour_code: ColourCode,
+}
+
+#[repr(transparent)]
+pub struct Buffer {
+	pub chars: [[VgaChar; VGA_WIDTH]; VGA_HEIGHT],
 }
