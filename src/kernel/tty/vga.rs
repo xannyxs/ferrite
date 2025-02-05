@@ -31,6 +31,14 @@ impl ColourCode {
 	pub fn new(foreground: VgaColour, background: VgaColour) -> ColourCode {
 		ColourCode((background as u8) << 4 | (foreground as u8))
 	}
+
+	pub fn set_foreground_colour(&mut self, foreground: VgaColour) {
+		self.0 = (self.0 & 0xf0) | (foreground as u8);
+	}
+
+	pub fn set_background_colour(&mut self, background: VgaColour) {
+		self.0 = (self.0 & 0x0f) | ((background as u8) << 4);
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

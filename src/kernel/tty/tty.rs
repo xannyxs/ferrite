@@ -1,27 +1,44 @@
-use super::vga::{Buffer, ColourCode, VgaChar, VGA_HEIGHT, VGA_WIDTH};
+use super::vga::{
+	Buffer, ColourCode, VgaChar, VgaColour, VGA_HEIGHT, VGA_WIDTH,
+};
+use core::fmt;
 
 pub struct Writer {
 	column_position: usize,
 	row_position: usize,
-	colour_code: ColourCode,
+	pub colour_code: ColourCode,
 	buffer: &'static mut Buffer,
 }
 
+impl fmt::Write for Writer {
+	fn write_str(&mut self, s: &str) -> fmt::Result {
+		self.write_string(s);
+		Ok(())
+	}
+}
+
 impl Writer {
-	pub fn new(colour_code: ColourCode) -> Writer {
+	pub fn new() -> Writer {
 		let mut writer = Writer {
 			column_position: 0,
 			row_position: 0,
-			colour_code,
+			colour_code: ColourCode::new(
+				VgaColour::LightGrey,
+				VgaColour::Black,
+			),
 			buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
 		};
 		writer.clear_screen();
+
 		writer
 	}
 
 	pub fn write_string(&mut self, str: &str) {
 		for byte in str.bytes() {
-			self.write_byte(byte)
+			match byte {
+				0x20..=0x7e | b'\n' => self.write_byte(byte),
+				_ => self.write_byte(0xfe),
+			}
 		}
 	}
 
@@ -64,4 +81,11 @@ impl Writer {
 
 		self.buffer.chars = [[blank; VGA_WIDTH]; VGA_HEIGHT];
 	}
+}
+
+use lazy_static::lazy_static;
+use spin::Mutex;
+
+lazy_static! {
+	pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 }

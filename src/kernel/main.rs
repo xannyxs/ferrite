@@ -4,9 +4,8 @@
 mod arch;
 mod tty;
 
-use crate::tty::tty::Writer;
 use core::panic::PanicInfo;
-use tty::vga::{ColourCode, VgaColour};
+use tty::{tty::WRITER, vga::VgaColour};
 
 /// The kernel's name.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -15,15 +14,21 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
-	let mut writer =
-		Writer::new(ColourCode::new(VgaColour::LightGrey, VgaColour::Black));
+	use core::fmt::Write;
 
-	writer.write_string("Kernel Name:");
-	writer.write_string(NAME);
-	writer.write_string("\nVersion: ");
-	writer.write_string(VERSION);
-	writer.write_string("\n\n");
-	writer.write_string("Hello, Kernel world!\nI am shown in a VM\n");
+	WRITER.lock().write_str("Hello\n").unwrap();
+	write!(WRITER.lock(), "Hello {}\n", 42).unwrap();
+
+	WRITER
+		.lock()
+		.colour_code
+		.set_foreground_colour(VgaColour::Red);
+
+	WRITER
+		.lock()
+		.colour_code
+		.set_background_colour(VgaColour::LightBlue);
+	WRITER.lock().write_str("Hello again\n").unwrap();
 
 	loop {}
 }
