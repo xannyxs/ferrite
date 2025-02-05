@@ -2,6 +2,7 @@
 pub mod x86;
 
 /// The name of the current CPU architecture.
+#[allow(dead_code)]
 pub const ARCH: &str = {
 	#[cfg(target_arch = "x86")]
 	{

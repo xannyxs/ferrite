@@ -2,6 +2,7 @@
 #![no_main]
 
 mod arch;
+mod libc;
 mod tty;
 
 use core::panic::PanicInfo;
@@ -14,26 +15,25 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
-	use core::fmt::Write;
-
-	WRITER.lock().write_str("Hello\n").unwrap();
-	write!(WRITER.lock(), "Hello {}\n", 42).unwrap();
-
-	WRITER
-		.lock()
-		.colour_code
-		.set_foreground_colour(VgaColour::Red);
-
-	WRITER
-		.lock()
-		.colour_code
-		.set_background_colour(VgaColour::LightBlue);
-	WRITER.lock().write_str("Hello again\n").unwrap();
+	println!("Hello world!");
+	println!("Test!");
 
 	loop {}
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+	WRITER
+		.lock()
+		.colour_code
+		.set_foreground_colour(VgaColour::Red);
+
+	println!("{}", _info);
+
+	WRITER
+		.lock()
+		.colour_code
+		.set_foreground_colour(VgaColour::LightGrey);
+
 	loop {}
 }
