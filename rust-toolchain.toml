@@ -1,6 +1,4 @@
 [toolchain]
 channel = "nightly-2024-12-31"
-components = ["rustfmt", "rustc-dev", "rust-src", "clippy", "miri"]
-# targets = ["i686-unknown-linux-musl", "x86_64-unknown-linux-musl"]
-# targets = ["thumbv7em-none-eabihf"]
+components = ["rustfmt", "rust-analyzer","rustc-dev", "rust-src", "clippy", "miri"]
 profile = "minimal"

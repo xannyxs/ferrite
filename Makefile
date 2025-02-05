@@ -1,4 +1,5 @@
 NAME=rust_kfs.bin
+KERNEL=libkernel.a
 
 AS = nasm
 ASFLAGS=-felf32
@@ -12,8 +13,6 @@ BUILD_DIR = target/build
 
 LD=ld
 LDFLAGS=-m elf_i386 --no-dynamic-linker -static
-
-KERNEL=libkernel.a
 
 ASM_SRCS = $(shell find $(ARCH_DIR) -name '*.asm')
 ASM_OBJS = $(patsubst $(ARCH_DIR)/%.asm,$(ASM_TARGET_DIR)/%.o,$(ASM_SRCS))

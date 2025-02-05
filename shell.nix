@@ -17,12 +17,10 @@ pkgs.mkShell {
     # Rust specific
     pkg-config
     rustup
-    rustfmt
     clippy
 
-    # Bootloading
+    # Other
     grub2
-
     bear
   ];
 
