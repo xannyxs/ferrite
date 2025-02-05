@@ -10,11 +10,7 @@ opt-level = 2
 [profile.release]
 panic = "abort"
 
-# [[bin]]
-# name = "maestro"
-# path = "src/kernel/main.rs"
-
 [lib]
-name = "kfs"
+name = "kernel"
 path = "src/kernel/main.rs"
 crate-type = ["staticlib"]
