@@ -1,36 +1,46 @@
+/* This linker script organizes the memory layout for an x86 kernel.
+ * It places the program at the 2MB mark in memory and arranges different
+ * types of data into separate 4KB-aligned sections:
+ * 
+ * - .text:   Contains executable code and multiboot header
+ * - .rodata: Holds read-only data like constants
+ * - .data:   Stores initialized variables
+ * - .bss:    Reserved for uninitialized variables
+ * 
+ * The 4KB alignment matches the x86 page size, enabling proper memory
+ * protection and efficient virtual memory management.
+ */
+
 ENTRY(_start)
 
 SECTIONS
 {
-    /* Start at 1MB as before */
-    . = 0x00100000;
+  /* Start at 2MB */
+  . = 2M;
 
-    /* Text section with multiboot header */
-    .text : ALIGN(CONSTANT(MAXPAGESIZE)) {
-        . = ALIGN(8);
-        KEEP(*(.multiboot))
-        _TEXT_START_ = .;
-        *(.text*)           /* Changed to .text* to catch all text sections */
-        *(.rodata*)         /* Added for Rust's read-only data */
-        *(.eh_frame)        /* Added for exception handling information */
-        *(.eh_frame_hdr)    /* Added for exception frame headers */
-        _TEXT_END_ = .;
-    }
+  /* Text section with multiboot header */
+  .text BLOCK(4K) : ALIGN(4K)
+    {
+    *(.multiboot)
+    *(.text)
+  }
 
-    /* Data section */
-    .data : ALIGN(CONSTANT(MAXPAGESIZE)) {
-        _DATA_START_ = .;
-        *(.data*)           /* Changed to .data* to catch all data sections */
-        *(.got*)            /* Added for global offset table */
-        *(.got.plt*)        /* Added for procedure linkage table */
-        _DATA_END_ = .;
-    }
+  /* Read-only data. */
+  .rodata BLOCK(4K) : ALIGN(4K)
+    {
+    *(.rodata)
+  }
 
-    /* BSS section */
-    .bss : ALIGN(CONSTANT(MAXPAGESIZE)) {
-        _BSS_START_ = .;
-        *(.bss*)            /* Changed to .bss* to catch all bss sections */
-        *(COMMON)           /* Added for common symbols */
-        _BSS_END_ = .;
-    }
+  /* Read-write data (initialized) */
+  .data BLOCK(4K) : ALIGN(4K)
+    {
+    *(.data)
+  }
+
+  /* Read-write data (uninitialized) and stack */
+  .bss BLOCK(4K) : ALIGN(4K)
+    {
+    *(COMMON)
+    *(.bss)
+  }
 }

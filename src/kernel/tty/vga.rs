@@ -27,6 +27,7 @@ pub enum VgaColour {
 #[repr(transparent)]
 pub struct ColourCode(u8);
 
+#[allow(dead_code)] // Remove in future
 impl ColourCode {
 	pub fn new(foreground: VgaColour, background: VgaColour) -> ColourCode {
 		ColourCode((background as u8) << 4 | (foreground as u8))
