@@ -1,11 +1,11 @@
-# kfs_01
+# kfs
 Grub, boot and screen
 
 ## Resources
 
-The Bible: https://wiki.osdev.org/Main_Page
+The Kernel Bible: https://wiki.osdev.org/Main_Page
 
-Os Threoy: https://wiki.osdev.org/Category:OS_theory
+Os Theory: https://wiki.osdev.org/Category:OS_theory
 
 Bare Bones: https://wiki.osdev.org/Bare_Bones
 
@@ -23,4 +23,6 @@ Operating Systems: Three Easy Pieces : https://pages.cs.wisc.edu/~remzi/OSTEP/
 
 `nixpkgs` cross-compiler: https://nix.dev/tutorials/cross-compilation.html
 
-Rust Kernel Blog: https://os.phil-opp.com/minimal-rust-kernel/
+The RustKernel bible: https://os.phil-opp.com/
+
+Hardware explaination of PS/2 Keyboard: https://www.youtube.com/watch?v=7aXbh9VUB3U
