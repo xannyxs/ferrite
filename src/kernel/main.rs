@@ -15,7 +15,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
-	println!("Hello world!");
+	println!("Finished GDT\n");
 
 	loop {}
 }

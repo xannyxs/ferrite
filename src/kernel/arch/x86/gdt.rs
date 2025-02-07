@@ -1,7 +1,19 @@
+use super::{
+	boot::{GdtGates, GDT_ENTRIES},
+	diagnostics::cpu::check_protection_status,
+};
+
 pub struct Gate(pub u64);
 
+#[repr(C, packed)]
+pub struct GDTDescriptor {
+	pub size: u16,
+	pub offset: u32,
+}
+
+#[allow(unused)]
 impl Gate {
-	pub fn new(base: u32, limit: u32, access: u8, flags: u8) -> Self {
+	pub const fn new(base: u32, limit: u32, access: u8, flags: u8) -> Self {
 		let mut c = Self(0);
 		c.set_base(base);
 		c.set_limit(limit);
@@ -15,7 +27,7 @@ impl Gate {
 		(((self.0 >> 16) & 0xffffff) | ((self.0 >> 56) & 0xff) << 24) as u32
 	}
 
-	pub fn set_base(&mut self, base: u32) {
+	pub const fn set_base(&mut self, base: u32) {
 		self.0 &= !(0xffffff << 16);
 		self.0 &= !(0xff << 56);
 
@@ -27,7 +39,7 @@ impl Gate {
 		((self.0 & 0xffff) | (((self.0 >> 48) & 0xf) << 16)) as u32
 	}
 
-	pub fn set_limit(&mut self, limit: u32) {
+	pub const fn set_limit(&mut self, limit: u32) {
 		self.0 &= !0xffff;
 		self.0 &= !(0xf << 48);
 
@@ -39,7 +51,7 @@ impl Gate {
 		(self.0 >> 40) as u8
 	}
 
-	pub fn set_access(&mut self, access: u8) {
+	pub const fn set_access(&mut self, access: u8) {
 		self.0 &= !(0xff << 40);
 		self.0 |= (access as u64) << 40;
 	}
@@ -48,8 +60,26 @@ impl Gate {
 		((self.0 >> 52) & 0x0f) as u8
 	}
 
-	pub fn set_flags(&mut self, flags: u8) {
+	pub const fn set_flags(&mut self, flags: u8) {
 		self.0 &= !(0xf << 52);
 		self.0 |= (flags as u64) << 52;
 	}
+}
+
+extern "C" {
+	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
+}
+
+#[no_mangle]
+pub fn gdt_init() {
+	let gdt_descriptor = GDTDescriptor {
+		size: (core::mem::size_of::<GdtGates>() - 1) as u16,
+		offset: &GDT_ENTRIES as *const _ as u32,
+	};
+
+	unsafe {
+		gdt_flush(&gdt_descriptor as *const _);
+	}
+
+	check_protection_status();
 }

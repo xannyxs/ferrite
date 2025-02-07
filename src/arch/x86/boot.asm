@@ -50,34 +50,10 @@ stack_top:
 	global  _start:function
 
 _start:
-	;      Call Rust to initialize GDT
-	extern gdt_init
-	call   gdt_init
-
-	push eax; Save GDT pointer
-	mov  ecx, 24; Size of GDT (3 entries * 8 bytes each)
-	push ecx; Push size
-
-	sub  esp, 6; Make space for GDT descriptor
-	mov  word [esp], cx; Store size-1 in descriptor
-	mov  dword [esp+2], eax; Store pointer in descriptor
-	lgdt [esp]; Load our new GDT
-
-	;   Enable protected mode
-	mov eax, cr0
-	or  eax, 1
-	mov cr0, eax
-
-	;   Far jump to set CS register and clear pipeline
-	jmp start_protected_mode
-
-[bits 32]
-
-start_protected_mode:
 	mov esp, stack_top
 
-	extern test_memory_access
-	call   test_memory_access
+	extern gdt_init
+	call   gdt_init
 
 	;      Call kernel
 	extern kernel_main
@@ -87,7 +63,7 @@ start_protected_mode:
 
 .hang:
 	hlt ; Halt the CPU
-	jmp .hang; If we wake up (e.g., from NMI), halt again
+	jmp .hang
 
 .end:
 	global _start.end

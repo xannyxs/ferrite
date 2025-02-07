@@ -104,7 +104,11 @@ impl Writer {
 	}
 
 	/// Clears the entire screen by filling it with spaces
+	/// Resets column & row value to 0
 	fn clear_screen(&mut self) {
+		self.column_position = 0;
+		self.row_position = 0;
+
 		let blank = VgaChar {
 			ascii_character: b' ',
 			colour_code: self.colour_code,
