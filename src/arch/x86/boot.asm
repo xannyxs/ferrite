@@ -44,48 +44,24 @@ stack_top:
 
 	section .data
 
-gdt_start:
-	;  Null descriptor (required)
-	dd 0
-	dd 0
-
-	;  Code segment descriptor
-	dw 0xFFFF; Limit (bits 0-15)
-	dw 0; Base (bits 0-15)
-	db 0; Base (bits 16-23)
-	db 10011010b; Access byte - Present=1, Ring=00, Type=1, Code=1, Conforming=0, Readable=1, Accessed=0
-	db 11001111b; Flags and Limit (bits 16-19) - Granularity=1, 32-bit=1, 64-bit=0, AVL=0, Limit=1111b
-	db 0; Base (bits 24-31)
-
-	;  Data segment descriptor
-	dw 0xFFFF; Limit (bits 0-15)
-	dw 0; Base (bits 0-15)
-	db 0; Base (bits 16-23)
-	db 10010010b; Access byte - Present=1, Ring=00, Type=1, Code=0, Expand Down=0, Writable=1, Accessed=0
-	db 11001111b; Flags and Limit (bits 16-19)
-	db 0; Base (bits 24-31)
-
-gdt_end:
-
-gdt_descriptor:
-	dw gdt_end - gdt_start - 1; Size of GDT
-	dd gdt_start; Start address of GDT
-
-	; Define segment selectors
-	CODE_SEG equ 0x08  ; First descriptor after null
-	DATA_SEG equ 0x10  ; Second descriptor after null
-
 	; ----------------------------------------------
 
 	section .text
 	global  _start:function
 
 _start:
-	;   Set up stack pointer
-	mov esp, stack_top
+	;      Call Rust to initialize GDT
+	extern gdt_init
+	call   gdt_init
 
-	;    Load GDT
-	lgdt [gdt_descriptor]
+	push eax; Save GDT pointer
+	mov  ecx, 24; Size of GDT (3 entries * 8 bytes each)
+	push ecx; Push size
+
+	sub  esp, 6; Make space for GDT descriptor
+	mov  word [esp], cx; Store size-1 in descriptor
+	mov  dword [esp+2], eax; Store pointer in descriptor
+	lgdt [esp]; Load our new GDT
 
 	;   Enable protected mode
 	mov eax, cr0
@@ -93,20 +69,11 @@ _start:
 	mov cr0, eax
 
 	;   Far jump to set CS register and clear pipeline
-	jmp CODE_SEG:start_protected_mode
+	jmp start_protected_mode
 
 [bits 32]
 
 start_protected_mode:
-	;   Set up segment registers
-	mov ax, DATA_SEG
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-	mov ss, ax
-
-	;   Now set up the stack in the new segment
 	mov esp, stack_top
 
 	extern test_memory_access
