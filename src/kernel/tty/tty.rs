@@ -39,7 +39,7 @@ impl Writer {
 	pub fn new() -> Writer {
 		let mut writer = Writer {
 			column_position: 0,
-			row_position: 0,
+			row_position: VGA_HEIGHT - 1,
 			colour_code: ColourCode::new(
 				VgaColour::LightGrey,
 				VgaColour::Black,
@@ -87,12 +87,6 @@ impl Writer {
 				};
 
 				self.column_position += 1;
-
-				// Reset to top when we reach the bottom of the screen
-				if self.row_position + 1 == VGA_HEIGHT {
-					self.column_position = 0;
-					self.row_position = 0;
-				}
 			}
 		}
 	}
@@ -100,14 +94,14 @@ impl Writer {
 	/// Moves the cursor to the start of the next line
 	fn new_line(&mut self) {
 		self.column_position = 0;
-		self.row_position += 1;
+		self.row_position -= 1;
 	}
 
 	/// Clears the entire screen by filling it with spaces
 	/// Resets column & row value to 0
 	fn clear_screen(&mut self) {
 		self.column_position = 0;
-		self.row_position = 0;
+		self.row_position = VGA_HEIGHT - 1;
 
 		let blank = VgaChar {
 			ascii_character: b' ',

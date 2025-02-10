@@ -7,7 +7,7 @@ mod libc;
 mod tty;
 
 use core::panic::PanicInfo;
-use device::keyboard::get_keyboard_input;
+use device::keyboard::Keyboard;
 use tty::{tty::WRITER, vga::VgaColour};
 
 /// The kernel's name.
@@ -17,16 +17,11 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
-	println!("shelly >>");
+	print!("shelly >>");
 
+	let mut keyboard = Keyboard::new();
 	loop {
-		if let Some(code) = get_keyboard_input() {
-			match code {
-				28 => println!(),
-				8 => print!("\x08"),
-				_ => println!("input: {}", code),
-			}
-		}
+		keyboard.input();
 	}
 }
 
