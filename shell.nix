@@ -21,6 +21,7 @@ pkgs.mkShell {
 
     # Other
     grub2
+    gdb
     bear
   ];
 
