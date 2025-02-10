@@ -6,7 +6,6 @@ gdt_flush:
 	lgdt [eax]
 
 	;   Enable protected mode
-	cli ; Disable interrupts
 	mov eax, cr0
 	or  eax, 1
 	mov cr0, eax

@@ -21,6 +21,7 @@
 // https://wiki.osdev.org/Global_Descriptor_Table
 //------------------------------------------------------------------------------
 
+#[repr(C, align(8))]
 pub struct Gate(pub u64);
 
 /// Must be packed to maintain exact CPU-required layout

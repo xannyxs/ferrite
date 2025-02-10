@@ -21,23 +21,26 @@
 // - Granularity (0b???1): 4KB pages
 //------------------------------------------------------------------------------
 
-use super::{diagnostics::cpu::check_protection_status, gdt::GDTDescriptor};
-use crate::arch::x86::gdt;
+use super::{
+	diagnostics::cpu::check_protection_status,
+	gdt::{GDTDescriptor, Gate},
+};
 
-pub type GdtGates = [gdt::Gate; 5];
+pub type GdtGates = [Gate; 5];
 
 #[no_mangle]
+#[link_section = ".gdt"]
 pub static GDT_ENTRIES: GdtGates = [
-	gdt::Gate(0), // [0] Null Descriptor (CPU requirement)
+	Gate(0), // [0] Null Descriptor (CPU requirement)
 	#[cfg(target_arch = "x86")]
-	gdt::Gate::new(0, !0, 0b10011010, 0b1100), /* [1] Kernel Code: Base 0,
-	               * Limit max, Ring 0 */
-	gdt::Gate::new(0, !0, 0b10010010, 0b1100), /* [2] Kernel Data: Base 0,
-	                                            * Limit max, Ring 0 */
-	gdt::Gate::new(0, !0, 0b11111010, 0b1100), /* [3] User Code: Base 0,
-	                                            * Limit max, Ring 3 */
-	gdt::Gate::new(0, !0, 0b11110010, 0b1100), /* [4] User Data: Base 0,
-	                                            * Limit max, Ring 3 */
+	Gate::new(0, !0, 0b10011010, 0b1100), /* [1] Kernel Code: Base 0,
+	          * Limit max, Ring 0 */
+	Gate::new(0, !0, 0b10010010, 0b1100), /* [2] Kernel Data: Base 0,
+	                                       * Limit max, Ring 0 */
+	Gate::new(0, !0, 0b11111010, 0b1100), /* [3] User Code: Base 0,
+	                                       * Limit max, Ring 3 */
+	Gate::new(0, !0, 0b11110010, 0b1100), /* [4] User Data: Base 0,
+	                                       * Limit max, Ring 3 */
 ];
 
 // Future expansion:
@@ -45,15 +48,19 @@ pub static GDT_ENTRIES: GdtGates = [
 // gdt::Gate(0),  // TSS 1
 // gdt::Gate(0),  // TSS 2
 
+const PHYSICAL_ADDRESS: u32 = 0x00000800;
 extern "C" {
+	// src/arch/{target}/gdt.asm
 	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
 }
 
 #[no_mangle]
 pub fn gdt_init() {
+	use core::mem::size_of;
+
 	let gdt_descriptor = GDTDescriptor {
-		size: (core::mem::size_of::<GdtGates>() - 1) as u16,
-		offset: &GDT_ENTRIES as *const _ as u32,
+		size: (size_of::<GdtGates>() - 1) as u16,
+		offset: PHYSICAL_ADDRESS,
 	};
 
 	unsafe {

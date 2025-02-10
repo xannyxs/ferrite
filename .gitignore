@@ -1,4 +1,6 @@
 # Project based
+*.pdf
+
 kfs.elf
 /target
 *.bin
