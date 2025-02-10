@@ -26,6 +26,12 @@ use super::{
 	gdt::{GDTDescriptor, Gate},
 };
 
+const PHYSICAL_GDT_ADDRESS: u32 = 0x00000800;
+extern "C" {
+	// src/arch/{target}/gdt.asm
+	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
+}
+
 pub type GdtGates = [Gate; 5];
 
 #[no_mangle]
@@ -48,19 +54,13 @@ pub static GDT_ENTRIES: GdtGates = [
 // gdt::Gate(0),  // TSS 1
 // gdt::Gate(0),  // TSS 2
 
-const PHYSICAL_ADDRESS: u32 = 0x00000800;
-extern "C" {
-	// src/arch/{target}/gdt.asm
-	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
-}
-
 #[no_mangle]
 pub fn gdt_init() {
 	use core::mem::size_of;
 
 	let gdt_descriptor = GDTDescriptor {
 		size: (size_of::<GdtGates>() - 1) as u16,
-		offset: PHYSICAL_ADDRESS,
+		offset: PHYSICAL_GDT_ADDRESS,
 	};
 
 	unsafe {
