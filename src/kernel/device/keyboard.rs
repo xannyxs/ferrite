@@ -1,4 +1,4 @@
-use crate::{arch::x86::io, print};
+use crate::arch::x86::io;
 
 #[repr(u8)]
 #[allow(missing_docs)]
@@ -420,12 +420,13 @@ impl Keyboard {
 		}
 	}
 
-	pub fn input(&mut self) {
+	// TODO: Clean up code
+	pub fn input(&mut self) -> Option<char> {
 		const KEYBOARD_DATA_PORT: u16 = 0x60;
 		const KEYBOARD_STATUS_PORT: u16 = 0x64;
 
 		if io::inb(KEYBOARD_STATUS_PORT) & 1 == 0 {
-			return;
+			return None;
 		}
 
 		let scan_code = io::inb(KEYBOARD_DATA_PORT);
@@ -433,45 +434,45 @@ impl Keyboard {
 		// Alt Pressed
 		if scan_code == 56 {
 			self.alt_pressed = true;
-			return;
+			return None;
 		}
 
 		// Alt Released
 		if scan_code == 184 {
 			self.alt_pressed = false;
-			return;
+			return None;
 		}
 
 		// Ctrl Pressed
 		if scan_code == 29 {
 			self.ctrl_pressed = true;
-			return;
+			return None;
 		}
 
 		// Ctrl Released
 		if scan_code == 157 {
 			self.ctrl_pressed = false;
-			return;
+			return None;
 		}
 
 		// Shift Pressed
 		if scan_code == 42 {
 			self.shift_pressed = true;
-			return;
+			return None;
 		}
 
 		// Shift Released
 		if scan_code == 170 {
 			self.shift_pressed = false;
-			return;
+			return None;
 		}
 
 		if scan_code >= 0x80 {
-			return;
+			return None;
 		}
 
 		let c = self.get_ascii(scan_code);
 
-		print!("{}", c);
+		return Some(c);
 	}
 }
