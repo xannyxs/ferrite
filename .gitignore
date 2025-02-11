@@ -1,5 +1,6 @@
 # Project based
 *.pdf
+docs/book/
 
 kfs.elf
 /target
