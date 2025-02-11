@@ -1,6 +1,7 @@
 use crate::{
 	libc::console::bin::{gdt, reboot},
 	print, println,
+	tty::{tty::WRITER, vga::VGA_HEIGHT},
 };
 use core::str::from_utf8;
 
@@ -17,41 +18,66 @@ impl Console {
 			buffer: [0; 256],
 			prompt: "[shelly]$ ",
 		};
-
 		print!("{}", console.prompt);
-
-		return console;
+		console
 	}
 
-	// TODO: Implement signals
 	pub fn add_buffer(&mut self, c: char) {
 		match c {
 			'\n' => self.execute(),
-			_ => {
+			'\x08' => self.backspace(), // Handle backspace
+			c if self.b_pos < self.buffer.len() - 1 => {
 				self.buffer[self.b_pos] = c as u8;
 				self.b_pos += 1;
-				print!("{}", c)
+				print!("{}", c);
 			}
+			_ => {} // Buffer full or invalid character
 		}
 	}
 
+	fn backspace(&mut self) {
+		if self.b_pos <= 0 {
+			return;
+		}
+
+		self.buffer[self.b_pos] = 0;
+		self.b_pos -= 1;
+		WRITER.lock().clear_char();
+	}
+
 	fn execute(&mut self) {
-		let buffer = self.buffer;
-		let i = self.b_pos;
-
 		println!();
-		match from_utf8(&buffer[..i]) {
-			Ok(s) => match s {
-				_ if s == "reboot" => reboot::reboot(),
-				_ if s == "gdt" => gdt::print_gdt(),
-				_ if s == "" => (),
-				_ => print!("{}: command not found", s),
-			},
-			Err(e) => {
-				println!("Invalid UTF-8 sequence");
-			}
-		};
 
+		match from_utf8(&self.buffer[..self.b_pos]) {
+			Ok(cmd) => match cmd.trim() {
+				"reboot" => reboot::reboot(),
+				"gdt" => gdt::print_gdt(),
+				"clear" => self.clear_screen(),
+				"help" => self.print_help(),
+				"" => {}
+				_ => println!("{}: command not found", cmd.trim()),
+			},
+			Err(_) => println!("Invalid UTF-8 sequence"),
+		}
+
+		self.buffer = [0; 256];
 		self.b_pos = 0;
+
+		WRITER.lock().set_position(0, VGA_HEIGHT - 1);
+		WRITER.lock().clear_line();
+		print!("{}", self.prompt);
+	}
+
+	#[inline]
+	fn clear_screen(&mut self) {
+		WRITER.lock().clear_screen();
+	}
+
+	fn print_help(&self) {
+		println!("Available commands:");
+		println!("  reboot  - Restart the system");
+		println!("  gdt     - Print Global Descriptor Table");
+		println!("  clear   - Clear the screen");
+		println!("  help    - Show this help message");
 	}
 }

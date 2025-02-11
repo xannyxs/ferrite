@@ -66,6 +66,15 @@ impl Writer {
 		}
 	}
 
+	pub fn position(&self) -> (usize, usize) {
+		(self.column_position, self.row_position)
+	}
+
+	pub fn set_position(&mut self, col: usize, row: usize) {
+		self.column_position = col;
+		self.row_position = row;
+	}
+
 	/// Writes a single byte to the screen, handling newlines and screen
 	/// wrapping. Updates cursor position after writing.
 	fn write_byte(&mut self, byte: u8) {
@@ -91,15 +100,33 @@ impl Writer {
 		}
 	}
 
-	/// Moves the cursor to the start of the next line
+	fn shift_lines_up(&mut self) {
+		for row in 1..VGA_HEIGHT {
+			for col in 0..VGA_WIDTH {
+				let character = self.buffer.chars[row][col];
+				self.buffer.chars[row - 1][col] = character;
+			}
+		}
+
+		// Clear the last line
+		let blank = VgaChar {
+			ascii_character: b' ',
+			colour_code: self.colour_code,
+		};
+		for col in 0..VGA_WIDTH {
+			self.buffer.chars[VGA_HEIGHT - 1][col] = blank;
+		}
+	}
+
+	// Modify your new_line function to use shifting
 	fn new_line(&mut self) {
 		self.column_position = 0;
-		self.row_position -= 1;
+		self.shift_lines_up();
 	}
 
 	/// Clears the entire screen by filling it with spaces
 	/// Resets column & row value to 0
-	fn clear_screen(&mut self) {
+	pub fn clear_screen(&mut self) {
 		self.column_position = 0;
 		self.row_position = VGA_HEIGHT - 1;
 
@@ -109,6 +136,34 @@ impl Writer {
 		};
 		// Fill the entire buffer with blank characters
 		self.buffer.chars = [[blank; VGA_WIDTH]; VGA_HEIGHT];
+	}
+
+	/// Clears an entire line by filling it with spaces
+	/// Resets column & row value to 0
+	pub fn clear_line(&mut self) {
+		self.column_position = 0;
+		let blank = VgaChar {
+			ascii_character: b' ',
+			colour_code: self.colour_code,
+		};
+		for col in 0..VGA_WIDTH {
+			self.buffer.chars[VGA_HEIGHT - 1][col] = blank;
+		}
+	}
+
+	/// Clears an last shown char by filling it with blank
+	/// Sets column value by -= 1
+	pub fn clear_char(&mut self) {
+		self.column_position -= 1;
+
+		let row = self.row_position;
+		let column = self.column_position;
+
+		let blank = VgaChar {
+			ascii_character: b' ',
+			colour_code: self.colour_code,
+		};
+		self.buffer.chars[row][column] = blank;
 	}
 }
 
