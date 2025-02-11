@@ -1,5 +1,6 @@
 use crate::{
-	libc::console::bin::{gdt, reboot},
+	arch::x86::cpu::reboot,
+	libc::console::bin::gdt,
 	print, println,
 	tty::{tty::WRITER, vga::VGA_HEIGHT},
 };
@@ -25,7 +26,7 @@ impl Console {
 	pub fn add_buffer(&mut self, c: char) {
 		match c {
 			'\n' => self.execute(),
-			'\x08' => self.backspace(), // Handle backspace
+			'\x08' => self.backspace(),
 			c if self.b_pos < self.buffer.len() - 1 => {
 				self.buffer[self.b_pos] = c as u8;
 				self.b_pos += 1;
@@ -50,7 +51,7 @@ impl Console {
 
 		match from_utf8(&self.buffer[..self.b_pos]) {
 			Ok(cmd) => match cmd.trim() {
-				"reboot" => reboot::reboot(),
+				"reboot" => reboot(),
 				"gdt" => gdt::print_gdt(),
 				"clear" => self.clear_screen(),
 				"help" => self.print_help(),
