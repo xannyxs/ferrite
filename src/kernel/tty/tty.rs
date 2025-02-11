@@ -34,9 +34,8 @@ impl fmt::Write for Writer {
 }
 
 impl Writer {
-	/// Creates a new Writer instance with default light grey on black colours.
-	/// Initializes the VGA buffer pointer and clears the screen.
-	pub fn new() -> Writer {
+	#[allow(fuzzy_provenance_casts)]
+	fn new() -> Writer {
 		let mut writer = Writer {
 			column_position: 0,
 			row_position: VGA_HEIGHT - 1,
@@ -49,6 +48,7 @@ impl Writer {
 			// and we have exclusive access to it at kernel level.
 			buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
 		};
+
 		writer.clear_screen();
 		writer
 	}
@@ -58,20 +58,20 @@ impl Writer {
 	pub fn write_string(&mut self, str: &str) {
 		for byte in str.bytes() {
 			match byte {
-				// Only handle printable ASCII chars (0x20 to 0x7e) and newlines
 				0x20..=0x7e | b'\n' => self.write_byte(byte),
-				// Replace unprintable characters with ■
 				_ => self.write_byte(0xfe),
 			}
 		}
 	}
 
 	#[inline]
+	#[doc(hidden)]
 	pub fn position(&self) -> (usize, usize) {
 		(self.column_position, self.row_position)
 	}
 
 	#[inline]
+	#[doc(hidden)]
 	pub fn set_position(&mut self, col: usize, row: usize) {
 		self.column_position = col;
 		self.row_position = row;
@@ -91,7 +91,6 @@ impl Writer {
 				let col = self.column_position;
 				let colour_code = self.colour_code;
 
-				// Write the character to the buffer
 				self.buffer.chars[row][col] = VgaChar {
 					ascii_character: byte,
 					colour_code,
@@ -110,7 +109,6 @@ impl Writer {
 			}
 		}
 
-		// Clear the last line
 		let blank = VgaChar {
 			ascii_character: b' ',
 			colour_code: self.colour_code,
@@ -120,7 +118,6 @@ impl Writer {
 		}
 	}
 
-	// Modify your new_line function to use shifting
 	#[inline]
 	fn new_line(&mut self) {
 		self.column_position = 0;
@@ -137,7 +134,6 @@ impl Writer {
 			ascii_character: b' ',
 			colour_code: self.colour_code,
 		};
-		// Fill the entire buffer with blank characters
 		self.buffer.chars = [[blank; VGA_WIDTH]; VGA_HEIGHT];
 	}
 

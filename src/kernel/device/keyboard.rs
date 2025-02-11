@@ -1,8 +1,25 @@
+//! PS/2 Keyboard Driver for x86 Architecture
+//!
+//! This module implements a basic PS/2 keyboard driver that handles keyboard
+//! input in a bare metal environment. It provides scan code translation to
+//! ASCII characters and supports modifier keys (Shift, Ctrl, Alt) for extended
+//! input capabilities.
+//!
+//! The driver interfaces with the keyboard controller through the standard PS/2
+//! ports:
+//! - Data Port (0x60): Receives scan codes from the keyboard
+//! - Status Port (0x64): Reports keyboard controller status
+//!
+//! # Implementation Details
+//! The driver uses scan code set 1 (the standard PC keyboard set) and
+//! translates these hardware-level codes into ASCII characters that can be used
+//! by higher level software like a shell or text editor. Special consideration
+//! is given to key release codes (>0x80) to properly track modifier key states.
+
 use crate::arch::x86::io;
 
 #[repr(u8)]
 #[allow(missing_docs)]
-#[allow(dead_code)]
 pub enum KeyboardKey {
 	KeyEsc = 0x01,
 	Key1 = 0x02,
@@ -131,6 +148,7 @@ pub enum KeyboardKey {
 	KeyPause = 0xef,
 }
 
+#[doc(hidden)]
 pub struct Keyboard {
 	shift_pressed: bool,
 	ctrl_pressed: bool,
@@ -138,6 +156,7 @@ pub struct Keyboard {
 }
 
 impl Keyboard {
+	#[doc(hidden)]
 	pub fn new() -> Keyboard {
 		Keyboard {
 			shift_pressed: false,

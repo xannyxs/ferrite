@@ -1,32 +1,31 @@
-//------------------------------------------------------------------------------
-// Global Descriptor Table Implementation (gdt.rs)
-//
-// This module implements the GDT entry structure and manipulation methods.
-// Each GDT entry (Gate) is a 64-bit structure with the following layout:
-//
-// Base Address:  32 bits (split across bits 16-39 and 56-63)
-// Segment Limit: 20 bits (bits 0-15 and 48-51)
-// Access Byte:   8 bits  (bits 40-47)
-//   - Present:     Bit 7 (P)
-//   - DPL:         Bits 5-6 (Ring Level)
-//   - Type:        Bit 4 (S)
-//   - Type flags:  Bits 0-3
-// Flags:        4 bits  (bits 52-55)
-//   - Granularity: Bit 3 (G)
-//   - Size:        Bit 2 (D/B)
-//   - Long mode:   Bit 1 (L)
-//   - Reserved:    Bit 0
-//
-// For more information go to:
-// https://wiki.osdev.org/Global_Descriptor_Table
-//------------------------------------------------------------------------------
+//! Global Descriptor Table Implementation (gdt.rs)
+//! This module implements the GDT entry structure and manipulation methods.
+//! Each GDT entry (Gate) is a 64-bit structure with the following layout:
+//!
+//! Base Address:  32 bits (split across bits 16-39 and 56-63)
+//! Segment Limit: 20 bits (bits 0-15 and 48-51)
+//! Access Byte:   8 bits  (bits 40-47)
+//!   - Present:     Bit 7 (P)
+//!   - DPL:         Bits 5-6 (Ring Level)
+//!   - Type:        Bit 4 (S)
+//!   - Type flags:  Bits 0-3
+//! Flags:        4 bits  (bits 52-55)
+//!   - Granularity: Bit 3 (G)
+//!   - Size:        Bit 2 (D/B)
+//!   - Long mode:   Bit 1 (L)
+//!   - Reserved:    Bit 0
+//!
+//! For more information go to:
+//! https://wiki.osdev.org/Global_Descriptor_Table
 
 #[repr(C, align(8))]
 #[derive(Debug, Copy, Clone)]
+#[doc(hidden)]
 pub struct Gate(pub u64);
 
 /// Must be packed to maintain exact CPU-required layout
 #[repr(C, packed)]
+#[doc(hidden)]
 pub struct GDTDescriptor {
 	pub size: u16,
 	pub offset: u32,

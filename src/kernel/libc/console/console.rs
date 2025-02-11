@@ -6,6 +6,7 @@ use crate::{
 };
 use core::str::from_utf8;
 
+#[doc(hidden)]
 pub struct Console {
 	b_pos: usize,
 	buffer: [u8; 256],
@@ -13,6 +14,16 @@ pub struct Console {
 }
 
 impl Console {
+	/// Creates a new console instance with default settings. Only one should
+	/// exist in the kernel.
+	///
+	/// This function initializes a new console with an empty command buffer and
+	/// the default shell prompt "[shelly]$ ". The console is immediately ready
+	/// for input after creation, as it displays the prompt right away.
+	///
+	/// # Returns
+	/// Returns a new `Console` instance ready to accept input.
+	/// ```
 	pub fn new() -> Self {
 		let console = Console {
 			b_pos: 0,
@@ -23,6 +34,37 @@ impl Console {
 		console
 	}
 
+	/// Processes a single character of input for the shell.
+	///
+	/// This function handles all input to the shell, managing special
+	/// characters and building up the command buffer character by character.
+	/// It supports regular typing, command execution (on newline), and
+	/// backspace for editing.
+	///
+	/// # Arguments
+	/// * `c` - The character to process, which can be:
+	///   - A printable character (stored in buffer and displayed)
+	///   - Newline ('\n') to execute the current command
+	///   - Backspace ('\x08') to delete the last character
+	///
+	/// # Behavior
+	/// - Regular characters are stored in the buffer and displayed
+	/// - Newline triggers command execution
+	/// - Backspace removes the last character
+	/// - Buffer overflow and invalid characters are ignored
+	///
+	/// # Implementation Details
+	/// The function maintains a buffer position (b_pos) that:
+	/// - Increases with each added character
+	/// - Is bounded by the buffer size (256 bytes)
+	/// - Is adjusted when backspace is used
+	///
+	/// # Example
+	/// ```
+	/// shell.add_buffer('l'); // Types 'l'
+	/// shell.add_buffer('s'); // Types 's'
+	/// shell.add_buffer('\n'); // Executes "ls" command
+	/// ```
 	pub fn add_buffer(&mut self, c: char) {
 		match c {
 			'\n' => self.execute(),
@@ -55,6 +97,7 @@ impl Console {
 				"gdt" => gdt::print_gdt(),
 				"clear" => self.clear_screen(),
 				"help" => self.print_help(),
+				"panic" => panic!("Test panic"),
 				"" => {}
 				_ => println!("{}: command not found", cmd.trim()),
 			},

@@ -1,17 +1,24 @@
 use core::arch::asm;
 
 #[inline]
-pub unsafe fn cli() {
-	asm!("cli", options(nomem, nostack));
+#[doc(hidden)]
+pub fn cli() {
+	unsafe {
+		asm!("cli", options(nomem, nostack));
+	}
 }
 
 #[inline]
-pub unsafe fn halt() {
-	asm!("hlt", options(nomem, nostack));
+#[doc(hidden)]
+pub fn halt() {
+	unsafe {
+		asm!("hlt", options(nomem, nostack));
+	}
 }
 
 #[inline]
-pub unsafe fn halt_loop() -> ! {
+#[doc(hidden)]
+pub fn halt_loop() -> ! {
 	loop {
 		halt();
 	}

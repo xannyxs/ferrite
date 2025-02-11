@@ -1,6 +1,7 @@
 use super::control::halt_loop;
 use crate::arch::x86::io::{inb, outb};
 
+#[doc(hidden)]
 pub fn reboot() -> ! {
 	let mut good: u8 = 0x02;
 
@@ -10,7 +11,5 @@ pub fn reboot() -> ! {
 
 	outb(0x64, 0xfe);
 
-	unsafe {
-		halt_loop();
-	}
+	halt_loop();
 }

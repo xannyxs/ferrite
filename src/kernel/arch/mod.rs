@@ -1,3 +1,4 @@
+#[doc(hidden)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub mod x86;
 
@@ -8,6 +9,7 @@ pub const ARCH: &str = {
 	{
 		"x86"
 	}
+	// TODO: Add 64 bits, cuz why not
 	#[cfg(target_arch = "x86_64")]
 	{
 		"x86_64"
