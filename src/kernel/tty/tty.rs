@@ -66,10 +66,12 @@ impl Writer {
 		}
 	}
 
+	#[inline]
 	pub fn position(&self) -> (usize, usize) {
 		(self.column_position, self.row_position)
 	}
 
+	#[inline]
 	pub fn set_position(&mut self, col: usize, row: usize) {
 		self.column_position = col;
 		self.row_position = row;
@@ -119,6 +121,7 @@ impl Writer {
 	}
 
 	// Modify your new_line function to use shifting
+	#[inline]
 	fn new_line(&mut self) {
 		self.column_position = 0;
 		self.shift_lines_up();
