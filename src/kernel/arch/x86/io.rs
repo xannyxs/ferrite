@@ -1,5 +1,6 @@
 use core::arch::asm;
 
+#[inline]
 pub fn inb(addr: u16) -> u8 {
 	let mut out: u8;
 
@@ -10,6 +11,7 @@ pub fn inb(addr: u16) -> u8 {
 	out
 }
 
+#[inline]
 pub fn outb(addr: u16, val: u8) {
 	unsafe {
 		asm!("out dx, al", in("dx") addr, in("al") val);
