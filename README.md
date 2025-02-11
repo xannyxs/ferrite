@@ -1,10 +1,5 @@
 # Fungul
 
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge&logo=book)](./LICENSE)
-![Rust](https://img.shields.io/badge/rust-nightly-orange.svg?style=for-the-badge&logo=rust)
-![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/fungul/rust.yml?style=for-the-badge&logo=github)
-[![Discord](https://img.shields.io/discord/XXXXXXX?style=for-the-badge&logo=discord&color=%235865f2)](https://discord.gg/fungul)
-
 Fungul is an experimental kernel written in Rust. Just as fungal networks in nature create vast, efficient systems for resource sharing, Fungul aims to provide a robust foundation for process communication and resource management.
 
 > This project is in early stage development. While it's exciting to experiment with, it's not yet ready for production use.
