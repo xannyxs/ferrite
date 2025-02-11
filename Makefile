@@ -45,7 +45,7 @@ fclean:
 re: fclean all
 
 run: $(BIN)
-	qemu-system-i386 -kernel $(BIN) -no-reboot
+	qemu-system-i386 -kernel $(BIN)
 
 run_debug: $(BIN)
 	qemu-system-i386 -kernel $(BIN) -no-reboot -serial stdio -d int -D qemu.log
@@ -55,6 +55,6 @@ iso:
 	cp rust_kfs.bin isodir/boot/rust_kfs.bin
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) isodir
-	qemu-system-i386 -cdrom $(ISO) -no-reboot
+	qemu-system-i386 -cdrom $(ISO)
 
 .PHONY: all clean fclean re run run_debug iso

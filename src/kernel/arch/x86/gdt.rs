@@ -22,6 +22,7 @@
 //------------------------------------------------------------------------------
 
 #[repr(C, align(8))]
+#[derive(Debug, Copy, Clone)]
 pub struct Gate(pub u64);
 
 /// Must be packed to maintain exact CPU-required layout
@@ -50,7 +51,7 @@ impl Gate {
 		c
 	}
 
-	pub fn get_base(&mut self) -> u32 {
+	pub fn base(&mut self) -> u32 {
 		(((self.0 >> 16) & 0xffffff) | ((self.0 >> 56) & 0xff) << 24) as u32
 	}
 
@@ -62,7 +63,7 @@ impl Gate {
 		self.0 |= ((base as u64 >> 24) & 0xff) << 56;
 	}
 
-	pub fn get_limit(&mut self) -> u32 {
+	pub fn limit(&mut self) -> u32 {
 		((self.0 & 0xffff) | (((self.0 >> 48) & 0xf) << 16)) as u32
 	}
 
@@ -74,7 +75,7 @@ impl Gate {
 		self.0 |= ((limit as u64 >> 16) & 0xf) << 48;
 	}
 
-	pub fn get_access(&mut self) -> u8 {
+	pub fn access(&mut self) -> u8 {
 		(self.0 >> 40) as u8
 	}
 
@@ -83,7 +84,7 @@ impl Gate {
 		self.0 |= (access as u64) << 40;
 	}
 
-	pub fn get_flags(&mut self) -> u8 {
+	pub fn flags(&mut self) -> u8 {
 		((self.0 >> 52) & 0x0f) as u8
 	}
 
