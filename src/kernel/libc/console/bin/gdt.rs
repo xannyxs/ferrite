@@ -1,5 +1,6 @@
 use crate::{arch::x86::boot::GDT_ENTRIES, println};
 
+#[doc(hidden)]
 pub fn print_gdt() {
 	println!("Global Descriptor Table (GDT)");
 	println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

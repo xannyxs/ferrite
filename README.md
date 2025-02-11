@@ -1,28 +1,45 @@
-# kfs
-Grub, boot and screen
+# Fungul
 
-## Resources
+Fungul is an experimental kernel written in Rust. Just as fungal networks in nature create vast, efficient systems for resource sharing, Fungul aims to provide a robust foundation for process communication and resource management.
 
-The Kernel Bible: https://wiki.osdev.org/Main_Page
+> This project is in early stage development. While it's exciting to experiment with, it's not yet ready for production use.
 
-Os Theory: https://wiki.osdev.org/Category:OS_theory
+## Building from Source
 
-Bare Bones: https://wiki.osdev.org/Bare_Bones
+You'll need:
+- `nix-shell` for an isolated development environment
+- QEMU for testing
 
-With the osdev complement: https://wiki.osdev.org/James_Molloy's_Tutorial_Known_Bugs
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/fungul
+cd fungul
 
-Brandon Friesen - osdever: http://www.osdever.net/bkerndev/Docs/intro.htm
+# Initiate nix-shell
+nix-shell shell.nix --command "zsh"
 
-introduction : https://www.linuxjournal.com/content/what-does-it-take-make-kernel-0
+# Build the kernel
+make
 
-bad : https://www.codeproject.com/Articles/1225196/Create-Your-Own-Kernel-In-C-2
+# Run in QEMU
+make run
+```
 
-https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3a-part-1-manual.html
+## Documentation
 
-Operating Systems: Three Easy Pieces : https://pages.cs.wisc.edu/~remzi/OSTEP/
+Comprehensive documentation is available in the `/docs` directory. To explore the documentation:
 
-`nixpkgs` cross-compiler: https://nix.dev/tutorials/cross-compilation.html
+```bash
+mdbook serve --open docs
+```
 
-The RustKernel bible: https://os.phil-opp.com/
+The documentation provides insights into Fungul's design philosophy and implementation details, which could be valuable for your own kernel development journey. Take this with a grain of salt, since I am not fimiliar with everything either.
 
-Hardware explaination of PS/2 Keyboard: https://www.youtube.com/watch?v=7aXbh9VUB3U
+## Why "Fungul"?
+
+The name "Fungul" draws inspiration from both Unix naming conventions and natural fungal networks. Like the mycorrhizal networks that connect forest ecosystems, Fungul aims to create an efficient, interconnected system for resource sharing and process communication. This biological metaphor extends to our architecture, where we treat system components as nodes in a living, adapting network.
+
+## License
+
+Fungul is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+

@@ -15,14 +15,4 @@ pub fn check_protection_status() {
 			cr0
 		);
 	}
-
-	//let wp_bit = cr0 & (1 << 16);
-	//if wp_bit == 0 {
-	//	panic!(
-	//		"Write Protection is not enabled! \
-	//           This is required for proper memory protection. \
-	//           CR0 value: {:#x}",
-	//		cr0
-	//	);
-	//}
 }

@@ -18,6 +18,7 @@ pkgs.mkShell {
     pkg-config
     rustup
     clippy
+    mdbook
 
     # Other
     grub2
