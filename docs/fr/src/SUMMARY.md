@@ -8,6 +8,10 @@
 - [KFS 01](project/kfs_01.md)
 - [KFS 02](project/kfs_02.md)
 
+# CPU
+
+- [Global Descriptor Table (GDT)](cpu/gdt.md)
+
 # For Developers
 
 - [Building from Source](developers/building.md)

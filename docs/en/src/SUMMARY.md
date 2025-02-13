@@ -9,10 +9,10 @@
 - [KFS 02](project/kfs_02.md)
 <!--- [KFS 03](project/kfs_03.md)-->
 
-# Architecture
+<!--# Architecture-->
 
-- [System Overview](architecture/overview.md)
-- [Rust & Me](architecture/rust.md)
+<!--- [System Overview](architecture/overview.md)-->
+<!--- [Rust & Me](architecture/rust.md)-->
 
 # CPU
 
