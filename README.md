@@ -12,7 +12,7 @@ You'll need:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/fungul
+git clone https://github.com/xannyxs/fungul
 cd fungul
 
 # Initiate nix-shell

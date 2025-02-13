@@ -20,6 +20,10 @@ pkgs.mkShell {
     clippy
     mdbook
 
+    # Formatters
+    markdownlint-cli
+    alejandra
+
     # Other
     grub2
     gdb
