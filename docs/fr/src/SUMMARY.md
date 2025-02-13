@@ -7,16 +7,6 @@
 - [Overview](project/overview.md)
 - [KFS 01](project/kfs_01.md)
 - [KFS 02](project/kfs_02.md)
-<!--- [KFS 03](project/kfs_03.md)-->
-
-# Architecture
-
-- [System Overview](architecture/overview.md)
-- [Rust & Me](architecture/rust.md)
-
-# CPU
-
-- [Global Descriptor Table (GDT)](cpu/gdt.md)
 
 # For Developers
 
