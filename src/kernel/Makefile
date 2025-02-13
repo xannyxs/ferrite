@@ -8,8 +8,8 @@ ASFLAGS=-felf32
 ## Add in CLI --release to compile production code
 CARGO_FLAGS ?= 
 
-KERNEL_DIR = src/kernel
-ARCH_DIR = src/arch/x86
+KERNEL_DIR = src
+ARCH_DIR = ../arch/x86
 LIBC_DIR = src/libc
 
 ASM_TARGET_DIR = target/asm/x86

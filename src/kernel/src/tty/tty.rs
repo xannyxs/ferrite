@@ -18,6 +18,7 @@ use core::fmt;
 
 /// Represents a text-mode VGA writer that can output characters to the screen.
 /// Keeps track of the current cursor position and text colours.
+#[doc(hidden)]
 pub struct Writer {
 	column_position: usize,
 	row_position: usize,

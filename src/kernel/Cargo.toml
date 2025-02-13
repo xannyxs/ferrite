@@ -1,5 +1,5 @@
 [package]
-name = "rust_kernel"
+name = "fungul"
 version = "0.5.3"
 edition = "2021"
 
@@ -12,9 +12,8 @@ features = ["spin_no_std"]
 
 [lib]
 name = "kernel"
-path = "src/kernel/main.rs"
+path = "src/kernel.rs"
 crate-type = ["staticlib"]
-test = true
 
 [profile.dev]
 panic = "abort"

@@ -7,6 +7,9 @@
 //!
 //! This is not meant as an actual Kernel, and should not be used in production.
 
+#![reexport_test_harness_main = "test_main"]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
 #![no_std] // Don't link to standard library - essential for kernels
 #![no_main] // Don't use normal entry points - we define our own
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
@@ -62,7 +65,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /* -------------------------------------- */
 
 #[no_mangle]
-#[allow(missing_docs)]
+#[doc(hidden)]
 pub extern "C" fn kernel_main() -> ! {
 	let mut keyboard = Keyboard::new();
 	let mut console = Console::new();
