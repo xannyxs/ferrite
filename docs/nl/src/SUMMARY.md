@@ -1,22 +1,17 @@
 # Summary
 
-[Introduction](introduction.md)
+[Introductie](README.md)
 
 # 42 Project
 
-- [Overview](project/overview.md)
+- [Overzicht](project/overview.md)
 - [KFS 01](project/kfs_01.md)
 - [KFS 02](project/kfs_02.md)
 - [KFS 03](project/kfs_03.md)
 
 # Architecture
 
-- [System Overview](architecture/overview.md)
-
-# Boot Process
-
-- [Bootloader](boot/bootloader.md)
-- [Boot Sequence](boot/sequence.md)
+- [Systeem Overzicht](architecture/overview.md)
 
 # CPU
 
@@ -25,4 +20,4 @@
 # For Developers
 
 - [Building from Source](developers/building.md)
-- [Sources](developers/sources.md)
+- [Referenties](developers/sources.md)

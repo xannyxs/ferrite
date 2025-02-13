@@ -1,0 +1,11 @@
+[book]
+authors = ["xannyx"]
+src = "src"
+title = "Fungul"
+language = "en"
+
+[rust]
+edition = "2021"
+
+[output.html.playground]
+line-numbers = true
