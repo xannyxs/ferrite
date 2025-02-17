@@ -1,9 +1,5 @@
-BIN=rust_kfs.bin
-ISO=rust_kfs.iso
-KERNEL=libkernel.a
-
-AS = nasm
-ASFLAGS=-felf32
+BIN=fungul.bin
+ISO=fungul.iso
 
 ## Add in CLI --release to compile production code
 CARGO_FLAGS ?= 
@@ -12,27 +8,8 @@ KERNEL_DIR = src
 ARCH_DIR = ../arch/x86
 LIBC_DIR = src/libc
 
-ASM_TARGET_DIR = target/asm/x86
-BUILD_DIR = target/build
-
-LD=ld
-LDFLAGS=-m elf_i386 --no-dynamic-linker -static
-
-ASM_SRCS = $(shell find $(ARCH_DIR) -name '*.asm')
-ASM_OBJS = $(patsubst $(ARCH_DIR)/%.asm,$(ASM_TARGET_DIR)/%.o,$(ASM_SRCS))
-
-
-all: $(BIN)
-
-$(BIN): $(KERNEL) $(ASM_OBJS)
-	$(LD) $(LDFLAGS) -T $(ARCH_DIR)/x86.ld -o $(BIN) target/x86/debug/$(KERNEL)
-
-$(KERNEL):
+all:
 	cargo build $(CARGO_FLAGS)
-
-$(ASM_TARGET_DIR)/%.o: $(ARCH_DIR)/%.asm
-	@mkdir -p $(dir $@)
-	$(AS) $(ASFLAGS) $< -o $@
 
 clean:
 	cargo clean
