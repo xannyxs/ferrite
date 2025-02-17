@@ -18,7 +18,6 @@ SECTIONS
   /* Start at 2MB */
   . = 2M;
 
-
   .gdt 0x800 : ALIGN(0x800)
     {
     gdt_start = .;
@@ -29,7 +28,7 @@ SECTIONS
   /* Text section with multiboot header */
   .text BLOCK(4K) : ALIGN(4K)
     {
-    *(.multiboot)
+    KEEP(*(.multiboot))
     *(.text)
   }
 

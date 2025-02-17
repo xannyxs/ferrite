@@ -25,7 +25,7 @@ ASM_OBJS = $(patsubst $(ARCH_DIR)/%.asm,$(ASM_TARGET_DIR)/%.o,$(ASM_SRCS))
 all: $(BIN)
 
 $(BIN): $(KERNEL) $(ASM_OBJS)
-	$(LD) $(LDFLAGS) -T $(ARCH_DIR)/x86.ld -o $(BIN) $(ASM_OBJS) target/x86/debug/$(KERNEL)
+	$(LD) $(LDFLAGS) -T $(ARCH_DIR)/x86.ld -o $(BIN) target/x86/debug/$(KERNEL)
 
 $(KERNEL):
 	cargo build $(CARGO_FLAGS)
@@ -52,9 +52,9 @@ run_debug: $(BIN)
 
 iso:
 	mkdir -p isodir/boot/grub
-	cp rust_kfs.bin isodir/boot/rust_kfs.bin
+	cp target/x86/debug/fungul isodir/boot/rust_kfs.bin
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) isodir
 	qemu-system-i386 -cdrom $(ISO)
 
-.PHONY: all clean fclean re run run_debug iso
+.PHONY: all clean fclean re run run_debug iso 
