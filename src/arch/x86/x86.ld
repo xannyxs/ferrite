@@ -18,20 +18,21 @@ SECTIONS
   /* Start at 2MB */
   . = 2M;
 
-
+  gdt_start = .;
   .gdt 0x800 : ALIGN(0x800)
     {
-    gdt_start = .;
     *(.gdt)
-    gdt_end = .;
   }
+  gdt_end = .;
 
   /* Text section with multiboot header */
+  multiboot_start = .;
   .text BLOCK(4K) : ALIGN(4K)
     {
-    *(.multiboot)
+    KEEP(*(.multiboot))
     *(.text)
   }
+  multiboot_end = .;
 
   /* Read-only data. */
   .rodata BLOCK(4K) : ALIGN(4K)

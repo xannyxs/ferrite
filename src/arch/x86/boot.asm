@@ -52,6 +52,7 @@ stack_top:
 _start:
 	mov esp, stack_top
 
+	;      init gdt
 	extern gdt_init
 	call   gdt_init
 

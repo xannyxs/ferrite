@@ -5,7 +5,7 @@ docs/fr/book/
 docs/nl/book/
 
 kfs.elf
-/target
+src/kernel/target
 *.bin
 *.iso
 .cache/
