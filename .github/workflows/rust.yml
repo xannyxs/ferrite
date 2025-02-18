@@ -1,0 +1,33 @@
+name: Kernel Tests
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y nasm qemu-system-x86 grub-common xorriso mtools
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        override: true
+        components: rustfmt, rust-analyzer, rustc-dev, rust-src, clippy, miri
+    
+    - name: Build
+      run: cargo build --verbose
+      working-directory: src/kernel
+      
+    - name: Run tests
+      run: cargo test --verbose
+      working-directory: src/kernel
