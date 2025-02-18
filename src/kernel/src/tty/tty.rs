@@ -23,7 +23,7 @@ pub struct Writer {
 	column_position: usize,
 	row_position: usize,
 	pub colour_code: ColourCode,
-	buffer: &'static mut Buffer, // Points to VGA memory at 0xB8000
+	pub buffer: &'static mut Buffer, // Points to VGA memory at 0xB8000
 }
 
 // Implement the core::fmt::Write trait so we can use Rust's formatting macros
@@ -171,7 +171,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 lazy_static! {
-	/// Global writer instance protected by a mutex for safe concurrent access.
+	/// Global writer to the VGA instance protected by a mutex for safe concurrent access.
 	/// This allows us to use the writer from anywhere in the kernel.
 	pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 }

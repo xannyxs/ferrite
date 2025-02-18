@@ -6,6 +6,6 @@
 // Force presence of the test code for both `cargo test` and `cargo clippy
 // --tests`
 #![feature(custom_test_frameworks)]
-#![test_runner(kernel::selftest::runner)]
+#![test_runner(kernel::tests::test_runner)]
 
 extern crate kernel;

@@ -9,6 +9,9 @@
 
 #![no_std] // Don't link to standard library - essential for kernels
 #![no_main] // Don't use normal entry points - we define our own
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::tests::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
 
@@ -45,12 +48,16 @@ pub mod device;
 pub mod libc;
 /// Macro directory
 pub mod macros;
+/// Panic
+pub mod panic;
+/// Tests
+pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use core::panic::PanicInfo;
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
+use tty::serial::SERIAL;
 
 /* -------------------------------------- */
 
@@ -66,6 +73,10 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub extern "C" fn kernel_main() -> ! {
 	let mut keyboard = Keyboard::new();
 	let mut console = Console::new();
+	SERIAL.lock().init();
+
+	#[cfg(test)]
+	test_main();
 
 	loop {
 		let c = match keyboard.input() {
@@ -75,13 +86,4 @@ pub extern "C" fn kernel_main() -> ! {
 
 		console.add_buffer(c);
 	}
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-	with_fg_color!(VgaColour::Red, {
-		println!("{}", _info);
-	});
-
-	loop {}
 }
