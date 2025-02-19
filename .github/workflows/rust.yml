@@ -17,6 +17,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y nasm qemu-system-x86 grub-common xorriso mtools
+        sudo apt-get install -y binutils-i686-linux-gnu gcc-i686-linux-gnu
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
