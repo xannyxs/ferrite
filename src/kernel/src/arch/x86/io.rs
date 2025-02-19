@@ -9,7 +9,7 @@ pub fn inb(addr: u16) -> u8 {
 		asm!("in al, dx", out("al") out, in("dx") addr, options(nomem, nostack, preserves_flags));
 	}
 
-	out
+	return out;
 }
 
 #[inline]
@@ -29,7 +29,7 @@ pub fn inw(addr: u16) -> u16 {
 		asm!("in al, dx", out("ax") out, in("dx") addr, options(nomem, nostack, preserves_flags));
 	}
 
-	out
+	return out;
 }
 
 #[inline]
@@ -49,7 +49,7 @@ pub fn inl(addr: u16) -> u32 {
 		asm!("in al, dx", out("eax") out, in("dx") addr, options(nomem, nostack, preserves_flags));
 	}
 
-	out
+	return out;
 }
 
 #[inline]

@@ -17,5 +17,5 @@ macro_rules! println_serial {
 #[doc(hidden)]
 pub fn _print_serial(args: fmt::Arguments) {
 	use core::fmt::Write;
-	SERIAL.lock().write_fmt(args).unwrap();
+	let _ = SERIAL.lock().write_fmt(args);
 }

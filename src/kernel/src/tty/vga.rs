@@ -1,3 +1,5 @@
+use core::mem::transmute;
+
 #[doc(hidden)]
 pub const VGA_WIDTH: usize = 80;
 
@@ -33,17 +35,21 @@ pub struct ColourCode(u8);
 
 impl ColourCode {
 	pub fn new(foreground: VgaColour, background: VgaColour) -> ColourCode {
-		ColourCode((background as u8) << 4 | (foreground as u8))
+		return ColourCode(((background as u8) << 4) | (foreground as u8));
 	}
 
 	pub fn get_foreground_colour(&self) -> VgaColour {
 		let value = (self.0 >> 4) & 0x0f;
-		unsafe { core::mem::transmute(value) }
+		unsafe {
+			return transmute::<u8, VgaColour>(value);
+		}
 	}
 
 	pub fn get_background_colour(&self) -> VgaColour {
 		let value = self.0 << 4;
-		unsafe { core::mem::transmute(value) }
+		unsafe {
+			return transmute::<u8, VgaColour>(value);
+		}
 	}
 
 	pub fn set_foreground_colour(&mut self, foreground: VgaColour) {

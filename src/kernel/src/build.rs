@@ -21,7 +21,7 @@ fn compile_asm(out_dir: &String) {
 			println!("cargo:warning=Compiling {}", path.display());
 
 			Command::new("nasm")
-				.args(&["-f", "elf32", path.to_str().unwrap(), "-o", &output])
+				.args(["-f", "elf32", path.to_str().unwrap(), "-o", &output])
 				.status()
 				.expect("Could not compile NASM correctly");
 

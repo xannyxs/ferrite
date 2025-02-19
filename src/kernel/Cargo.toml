@@ -13,11 +13,12 @@ name = "fungul"
 path = "src/bin.rs"
 
 [dependencies]
-spin = "0.5.2"
+spin = "0.9.8"
 
 [dependencies.lazy_static]
 version = "1.1.1"
 features = ["spin_no_std"]
+
 
 [profile.dev]
 panic = "abort"

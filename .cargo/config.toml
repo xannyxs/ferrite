@@ -7,3 +7,6 @@ target="src/arch/x86/x86.json"
 
 [target.x86]
 runner = "src/kernel/runner.sh"
+
+[alias]
+ltest = "test --lib test"

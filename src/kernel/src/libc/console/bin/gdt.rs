@@ -5,7 +5,7 @@ pub fn print_gdt() {
 	println!("Global Descriptor Table (GDT)");
 	println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-	for (index, mut gate) in GDT_ENTRIES.iter().map(|g| *g).enumerate() {
+	for (index, mut gate) in GDT_ENTRIES.iter().copied().enumerate() {
 		let descriptor_type = match index {
 			0 => "Null Descriptor",
 			1 => "Kernel Code Segment",
