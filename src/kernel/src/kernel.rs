@@ -19,7 +19,6 @@
 #![deny(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
 #![deny(rustdoc::broken_intra_doc_links)] // Catch broken documentation links
-
 // Code Quality
 #![deny(unreachable_pub)] // Catch unnecessarily public items
 #![deny(unused_must_use)] // Enforce handling of Result/Option returns

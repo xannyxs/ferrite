@@ -149,6 +149,7 @@ pub enum KeyboardKey {
 	KeyPause = 0xef,
 }
 
+#[must_use]
 #[doc(hidden)]
 pub struct Keyboard {
 	shift_pressed: bool,
