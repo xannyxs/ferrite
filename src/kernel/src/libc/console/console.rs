@@ -13,7 +13,7 @@ pub struct Console {
 	prompt: &'static str,
 }
 
-impl Console {
+impl Default for Console {
 	/// Creates a new console instance with default settings. Only one should
 	/// exist in the kernel.
 	///
@@ -24,16 +24,18 @@ impl Console {
 	/// # Returns
 	/// Returns a new `Console` instance ready to accept input.
 	/// ```
-	pub fn new() -> Self {
+	fn default() -> Self {
 		let console = Console {
 			b_pos: 0,
 			buffer: [0; 256],
 			prompt: "[shelly]$ ",
 		};
 		print!("{}", console.prompt);
-		console
+		return console;
 	}
+}
 
+impl Console {
 	/// Processes a single character of input for the shell.
 	///
 	/// This function handles all input to the shell, managing special
@@ -79,7 +81,7 @@ impl Console {
 	}
 
 	fn backspace(&mut self) {
-		if self.b_pos <= 0 {
+		if self.b_pos == 0 {
 			return;
 		}
 

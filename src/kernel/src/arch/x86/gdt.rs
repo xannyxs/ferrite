@@ -9,7 +9,8 @@
 //!   - DPL:         Bits 5-6 (Ring Level)
 //!   - Type:        Bit 4 (S)
 //!   - Type flags:  Bits 0-3
-//! Flags:        4 bits  (bits 52-55)
+//!
+//! Flags:         4 bits  (bits 52-55)
 //!   - Granularity: Bit 3 (G)
 //!   - Size:        Bit 2 (D/B)
 //!   - Long mode:   Bit 1 (L)
@@ -47,12 +48,13 @@ impl Gate {
 		c.set_access(access);
 		c.set_flags(flags);
 
-		c
+		return c;
 	}
 
 	#[inline]
 	pub fn base(&mut self) -> u32 {
-		(((self.0 >> 16) & 0xffffff) | ((self.0 >> 56) & 0xff) << 24) as u32
+		return (((self.0 >> 16) & 0xffffff) | (((self.0 >> 56) & 0xff) << 24))
+			as u32;
 	}
 
 	#[inline]
@@ -66,7 +68,7 @@ impl Gate {
 
 	#[inline]
 	pub fn limit(&mut self) -> u32 {
-		((self.0 & 0xffff) | (((self.0 >> 48) & 0xf) << 16)) as u32
+		return ((self.0 & 0xffff) | (((self.0 >> 48) & 0xf) << 16)) as u32;
 	}
 
 	#[inline]
@@ -80,7 +82,7 @@ impl Gate {
 
 	#[inline]
 	pub fn access(&mut self) -> u8 {
-		(self.0 >> 40) as u8
+		return (self.0 >> 40) as u8;
 	}
 
 	#[inline]
@@ -91,7 +93,7 @@ impl Gate {
 
 	#[inline]
 	pub fn flags(&mut self) -> u8 {
-		((self.0 >> 52) & 0x0f) as u8
+		return ((self.0 >> 52) & 0x0f) as u8;
 	}
 
 	#[inline]

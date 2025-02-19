@@ -30,7 +30,7 @@ pub struct Writer {
 impl fmt::Write for Writer {
 	fn write_str(&mut self, s: &str) -> fmt::Result {
 		self.write_string(s);
-		Ok(())
+		return Ok(());
 	}
 }
 
@@ -51,7 +51,7 @@ impl Writer {
 		};
 
 		writer.clear_screen();
-		writer
+		return writer;
 	}
 
 	/// Writes a string to the screen, handling both printable ASCII characters
@@ -68,7 +68,7 @@ impl Writer {
 	#[inline]
 	#[doc(hidden)]
 	pub fn position(&self) -> (usize, usize) {
-		(self.column_position, self.row_position)
+		return (self.column_position, self.row_position);
 	}
 
 	#[inline]

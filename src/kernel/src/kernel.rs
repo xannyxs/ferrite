@@ -26,6 +26,8 @@
 #![deny(unused_crate_dependencies)] // Catch unused dependencies
 #![deny(clippy::unwrap_used)] // Prevent unwrap() in kernel code
 #![deny(clippy::expect_used)] // Prevent expect() in kernel code
+#![deny(clippy::implicit_return)] // Force return keyword
+#![allow(clippy::needless_return)] // Allow return keyword
 
 // Memory Safety
 #![deny(invalid_reference_casting)] // Prevent dangerous reference casts
@@ -71,8 +73,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[no_mangle]
 #[doc(hidden)]
 pub extern "C" fn kernel_main() -> ! {
-	let mut keyboard = Keyboard::new();
-	let mut console = Console::new();
+	let mut keyboard = Keyboard::default();
+	let mut console = Console::default();
 	SERIAL.lock().init();
 
 	#[cfg(test)]
