@@ -2,8 +2,8 @@
 
 use crate::arch::x86::io::{inb, outb};
 use core::fmt;
+use kernel_sync::mutex::Mutex;
 use lazy_static::lazy_static;
-use spin::Mutex;
 
 /* -------------------------------------- */
 
