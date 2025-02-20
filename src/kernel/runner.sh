@@ -2,8 +2,11 @@
 
 # Build iso
 
-mkdir -p isodir/boot/grub
-cp "$1" isodir/boot/fungul.bin
+mkdir -p src/kernel/isodir/boot/grub
+cp "$1" src/kernel/isodir/boot/fungul.bin
+
+cd src/kernel || exit
+
 cp grub.cfg isodir/boot/grub/grub.cfg
 grub-mkrescue -o kernel.iso isodir
 
