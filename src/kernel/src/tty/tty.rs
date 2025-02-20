@@ -15,6 +15,10 @@ use super::vga::{
 	Buffer, ColourCode, VgaChar, VgaColour, VGA_HEIGHT, VGA_WIDTH,
 };
 use core::fmt;
+use kernel_sync::Mutex;
+use lazy_static::lazy_static;
+
+/* -------------------------------------- */
 
 /// Represents a text-mode VGA writer that can output characters to the screen.
 /// Keeps track of the current cursor position and text colours.
@@ -167,8 +171,7 @@ impl Writer {
 	}
 }
 
-use lazy_static::lazy_static;
-use spin::Mutex;
+/* -------------------------------------- */
 
 lazy_static! {
 	/// Global writer to the VGA instance protected by a mutex for safe concurrent access.

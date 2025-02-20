@@ -28,6 +28,8 @@ pub enum VgaColour {
 	White = 15,
 }
 
+/* -------------------------------------- */
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 #[doc(hidden)]

@@ -9,9 +9,11 @@
 - [KFS 02](project/kfs_02.md)
 <!--- [KFS 03](project/kfs_03.md)-->
 
-<!--# Architecture-->
+# Architecture
 
 <!--- [System Overview](architecture/overview.md)-->
+- [Build Pipeline](architecture/build.md)
+- [Design Decisions](architecture/design.md)
 <!--- [Rust & Me](architecture/rust.md)-->
 
 # CPU
@@ -20,5 +22,6 @@
 
 # For Developers
 
+- [Debugging](developers/debug.md)
 - [Building from Source](developers/building.md)
 - [Sources](developers/sources.md)

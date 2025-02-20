@@ -6,6 +6,7 @@ docs/nl/book/
 
 kfs.elf
 src/kernel/target
+src/sync/target
 *.bin
 *.iso
 .cache/

@@ -2,8 +2,10 @@
 
 use crate::arch::x86::io::{inb, outb};
 use core::fmt;
+use kernel_sync::Mutex;
 use lazy_static::lazy_static;
-use spin::Mutex;
+
+/* -------------------------------------- */
 
 const PORT: u16 = 0x3f8;
 
@@ -35,7 +37,7 @@ impl Serial {
 		}
 	}
 
-	pub fn init(&self) -> i32 {
+	pub fn init(&self) {
 		outb(PORT + 1, 0x00); // Disable all interrupts
 		outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
 		outb(PORT, 0x03); // Set divisor to 3 (lo byte) 38400 baud
@@ -48,14 +50,14 @@ impl Serial {
 					// byte)
 
 		if inb(PORT) != 0xae {
-			return 1;
+			panic!("Port: {} unusable", PORT);
 		}
 
 		outb(PORT + 4, 0x0f);
-
-		return 0;
 	}
 }
+
+/* -------------------------------------- */
 
 lazy_static! {
 	pub static ref SERIAL: Mutex<Serial> = Mutex::new(Serial::default());
