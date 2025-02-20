@@ -18,6 +18,7 @@
 - [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/) - OS concepts textbook
 - [Writing an OS in Rust](https://os.phil-opp.com/) - Rust kernel development guide
 - [PS/2 Keyboard Hardware](https://www.youtube.com/watch?v=7aXbh9VUB3U) - Hardware implementation details
+- [Rust Atomics and Locks](https://marabos.nl/atomics/) - All about mutexes, condition variables, atomics, and memory ordering
 
 ## Development Tools
 
