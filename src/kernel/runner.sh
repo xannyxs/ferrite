@@ -11,6 +11,8 @@ grub-mkrescue -o kernel.iso isodir
 if [ "$2" = "test" ]; then
     # For cargo test, we need the extra flags for test handling
     export QEMUFLAGS="-device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio -display none"
+elif [ "$2" = "debug" ]; then
+    export QEMUFLAGS="-serial stdio -s -S"
 else
     # For cargo run, we just need basic serial output
     export QEMUFLAGS="-serial stdio"

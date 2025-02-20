@@ -23,14 +23,8 @@ features = ["spin_no_std"]
 [profile.dev]
 # panic = "abort"
 opt-level = 2
-debug = true
-debug-assertions = true
 
 [profile.release]
 panic = "abort"
 opt-level = 3
-debug = false
-debug-assertions = false
-codegen-units = 1
-strip = true
 

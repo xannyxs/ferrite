@@ -1,5 +1,6 @@
 #![no_std]
-#![no_main]
 
 pub mod mutex;
+pub use mutex::Mutex;
+
 pub mod spinlock;
