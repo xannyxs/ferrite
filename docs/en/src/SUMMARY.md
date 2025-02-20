@@ -12,7 +12,7 @@
 # Architecture
 
 <!--- [System Overview](architecture/overview.md)-->
-- [Compiling Logic](architecture/compiling.md)
+- [Build Pipeline](architecture/build.md)
 - [Design Decisions](architecture/design.md)
 <!--- [Rust & Me](architecture/rust.md)-->
 

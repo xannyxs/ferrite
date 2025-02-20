@@ -9,3 +9,5 @@ Fungul is an experimental kernel written in Rust. Just as fungal networks in nat
 ## This Book
 
 This book contains more indepth information about my technical approach & a more blog-style writing about each project to get to the current point I am at.
+
+To find the book online, go to this page -> [a page](fungul.pages.dev)
