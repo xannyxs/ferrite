@@ -16,7 +16,7 @@ path = "src/bin.rs"
 kernel_sync = { path = "../sync/" }
 
 [dependencies.lazy_static]
-version = "1.1.1"
+version = "1.5.0"
 features = ["spin_no_std"]
 
 

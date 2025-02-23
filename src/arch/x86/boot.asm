@@ -42,10 +42,6 @@ stack_top:
 
 	; ----------------------------------------------
 
-	section .data
-
-	; ----------------------------------------------
-
 	section .text
 	global  _start:function
 
@@ -55,6 +51,10 @@ _start:
 	;      init gdt
 	extern gdt_init
 	call   gdt_init
+
+	;      Init paging
+	extern enable_paging
+	call   enable_paging
 
 	;      Call kernel
 	extern kernel_main

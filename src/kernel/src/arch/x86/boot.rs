@@ -61,11 +61,6 @@ pub static GDT_ENTRIES: GdtGates = [
 	Gate::new(0, !0, 0b11110010, 0b1100), // [4] User Data: Ring 3, writable
 ];
 
-// Future expansion:
-// - TSS (Task State Segment) entries will be needed for task switching
-// gdt::Gate(0),  // TSS 1
-// gdt::Gate(0),  // TSS 2
-
 #[no_mangle]
 #[doc(hidden)]
 pub fn gdt_init() {

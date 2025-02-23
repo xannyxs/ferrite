@@ -20,10 +20,15 @@ fn compile_asm(out_dir: &String) {
 
 			println!("cargo:warning=Compiling {}", path.display());
 
-			Command::new("nasm")
+			let status = Command::new("nasm")
 				.args(["-f", "elf32", path.to_str().unwrap(), "-o", &output])
 				.status()
 				.expect("Could not compile NASM correctly");
+
+			if !status.success() {
+				eprintln!("NASM compilation failed for {}", path.display());
+				exit(1);
+			}
 
 			println!("cargo:rustc-link-arg={}", output);
 		}
@@ -52,5 +57,6 @@ fn main() {
 	println!("cargo:rerun-if-changed=../arch/x86/test_gdt.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/gdt.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/boot.asm");
+	println!("cargo:rerun-if-changed=../arch/x86/paging.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/x86.ld");
 }

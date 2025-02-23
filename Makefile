@@ -26,6 +26,12 @@ fclean:
 re: fclean all
 
 run: all
-	cargo run --manifest-path=src/kernel/Cargo.toml
+	cd $(KERNEL_DIR) && cargo run
 
-.PHONY: all clean fclean re run 
+test: all
+	cd $(KERNEL_DIR) && cargo ltest
+
+debug: all
+	cd $(KERNEL_DIR) && cargo debug 
+
+.PHONY: all clean fclean re run debug
