@@ -3,9 +3,7 @@ use core::arch::asm;
 use kernel_sync::Mutex;
 use lazy_static::lazy_static;
 
-/// Number of entries in the x86 Interrupt Descriptor Table (0-255).
-/// Covers CPU exceptions (0-31), hardware interrupts (32-47), and software
-/// interrupts (48-255).
+#[doc(hidden)]
 pub const IDT_ENTRY_COUNT: usize = 256;
 
 lazy_static! {
@@ -15,6 +13,9 @@ lazy_static! {
 		Mutex::new([InterruptDescriptorEntry::default(); IDT_ENTRY_COUNT]);
 }
 
+/// The location of the IDT is kept in the IDTR (IDT register). This is loaded
+/// using the LIDT assembly instruction, whose argument is a pointer to an IDT
+/// Descriptor structure.
 #[repr(C, packed)]
 pub struct InterruptDescriptorTable {
 	/// One less than the size of the IDT in bytes.
@@ -50,14 +51,27 @@ impl Default for InterruptDescriptorEntry {
 	}
 }
 
+/// Initializes the Interrupt Descriptor Table (IDT) for the system.
+///
+/// It should be called during early boot before interrupts are enabled.
+///
+/// # Safety
+///
+/// This function uses the `lidt` assembly instruction which directly
+/// interacts with the CPU. Improper IDT setup can cause system crashes
+/// if interrupt handlers point to invalid code.
 #[no_mangle]
-#[doc(hidden)]
 pub fn idt_init() {
 	use core::mem::size_of;
 
-	let mut entries = IDT_ENTRIES.lock();
-	for i in 0..IDT_ENTRY_COUNT {
-		entries[i] = InterruptDescriptorEntry::default();
+	{
+		// TODO: Might change this approach to `Once`
+		let mut entries = IDT_ENTRIES.lock();
+		for i in 0..IDT_ENTRY_COUNT {
+			entries[i] = InterruptDescriptorEntry::default();
+		}
+		// The lock is automatically released here when `entries` goes out of
+		// scope
 	}
 
 	let idt_descriptor = InterruptDescriptorTable {

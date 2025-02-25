@@ -15,5 +15,5 @@ pub fn print_idt() {
 	let limit = u16::from_le_bytes([idtr[0], idtr[1]]);
 	let base = u32::from_le_bytes([idtr[2], idtr[3], idtr[4], idtr[5]]);
 
-	println!("IDTR limit: {:04x}, base: {:08x}", limit, base);
+	println!("IDTR limit: {:04x}, base: 0x{:08x}", limit, base);
 }

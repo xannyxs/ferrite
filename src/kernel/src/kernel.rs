@@ -52,7 +52,7 @@ pub mod libc;
 /// Macro directory
 pub mod macros;
 /// Memory allocation
-pub mod memory;
+//pub mod memory;
 /// Panic
 pub mod panic;
 /// Tests

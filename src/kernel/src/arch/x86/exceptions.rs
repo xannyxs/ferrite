@@ -1,9 +1,8 @@
 use super::idt::InterruptDescriptorEntry as Entry;
 
-#[derive(Clone)]
-#[repr(C)]
-#[repr(align(16))]
 #[doc(hidden)]
+#[derive(Clone)]
+#[repr(C, align(16))]
 pub struct InterruptDescriptorTable {
 	pub divide_by_zero: Entry,
 	pub debug: Entry,
