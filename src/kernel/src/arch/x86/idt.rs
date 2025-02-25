@@ -1,3 +1,14 @@
+//! The Interrupt Descriptor Table (IDT) is a binary data structure specific to
+//! the x86-64 architecture. It is the Protected Mode counterpart to the Real
+//! Mode Interrupt Vector Table (IVT) telling the CPU where the Interrupt
+//! Service Routines (ISR) are located (one per interrupt vector). It is similar
+//! to the Global Descriptor Table in structure.
+//!
+//! The IDT entries are called gates. It can contain Interrupt Gates, Task Gates
+//! and Trap Gates.
+//!
+//! Before you implement the IDT, make sure you have a working GDT.
+
 use super::exceptions;
 use core::arch::asm;
 use kernel_sync::Mutex;

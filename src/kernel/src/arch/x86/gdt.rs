@@ -19,9 +19,18 @@
 //! For more information go to:
 //! <https://wiki.osdev.org/Global_Descriptor_Table>
 
-#[repr(C, align(8))]
-#[derive(Debug, Copy, Clone)]
+const PHYSICAL_GDT_ADDRESS: u32 = 0x00000800;
+extern "C" {
+	// src/arch/{target}/gdt.asm
+	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
+}
+
 #[doc(hidden)]
+pub type GdtGates = [Gate; 5];
+
+#[doc(hidden)]
+#[derive(Debug, Copy, Clone)]
+#[repr(C, align(8))]
 pub struct Gate(pub u64);
 
 /// Must be packed to maintain exact CPU-required layout
@@ -101,4 +110,32 @@ impl Gate {
 		self.0 &= !(0xf << 52);
 		self.0 |= (flags as u64) << 52;
 	}
+}
+
+#[no_mangle]
+#[link_section = ".gdt"]
+pub static GDT_ENTRIES: GdtGates = [
+	Gate(0), // [0] Null Descriptor (CPU requirement)
+	#[cfg(target_arch = "x86")]
+	Gate::new(0, !0, 0b10011010, 0b1100), // [1] Kernel Code: Ring 0, executable
+	Gate::new(0, !0, 0b10010010, 0b1100), // [2] Kernel Data: Ring 0, writable
+	Gate::new(0, !0, 0b11111010, 0b1100), // [3] User Code: Ring 3, executable
+	Gate::new(0, !0, 0b11110010, 0b1100), // [4] User Data: Ring 3, writable
+];
+
+#[no_mangle]
+#[doc(hidden)]
+pub fn gdt_init() {
+	use core::mem::size_of;
+
+	let gdt_descriptor = GDTDescriptor {
+		size: (size_of::<GdtGates>() - 1) as u16,
+		offset: PHYSICAL_GDT_ADDRESS,
+	};
+
+	unsafe {
+		gdt_flush(&gdt_descriptor as *const _);
+	}
+
+	//check_protection_status();
 }

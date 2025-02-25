@@ -1,4 +1,4 @@
-use crate::{arch::x86::boot::GDT_ENTRIES, println};
+use crate::{arch::x86::gdt::GDT_ENTRIES, println};
 
 #[doc(hidden)]
 pub fn print_gdt() {
