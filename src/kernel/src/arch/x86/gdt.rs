@@ -17,7 +17,7 @@
 //!   - Reserved:    Bit 0
 //!
 //! For more information go to:
-//! https://wiki.osdev.org/Global_Descriptor_Table
+//! <https://wiki.osdev.org/Global_Descriptor_Table>
 
 #[repr(C, align(8))]
 #[derive(Debug, Copy, Clone)]

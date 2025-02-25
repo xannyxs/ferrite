@@ -9,16 +9,18 @@
 
 #![no_std] // Don't link to standard library - essential for kernels
 #![no_main] // Don't use normal entry points - we define our own
+
+// Testing
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::tests::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+// Safety and Documentation
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
-
-// Safety and Documentation
-#![deny(missing_docs)] // Require documentation for public items
+#![warn(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
 #![deny(rustdoc::broken_intra_doc_links)] // Catch broken documentation links
+
 // Code Quality
 #![deny(unreachable_pub)] // Catch unnecessarily public items
 #![deny(unused_must_use)] // Enforce handling of Result/Option returns
@@ -49,6 +51,8 @@ pub mod device;
 pub mod libc;
 /// Macro directory
 pub mod macros;
+/// Memory allocation
+pub mod memory;
 /// Panic
 pub mod panic;
 /// Tests

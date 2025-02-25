@@ -48,9 +48,13 @@ stack_top:
 _start:
 	mov esp, stack_top
 
-	;      init gdt
+	;      Init gdt
 	extern gdt_init
 	call   gdt_init
+
+	;      Init idt
+	extern idt_init
+	call   idt_init
 
 	;      Init paging
 	extern enable_paging

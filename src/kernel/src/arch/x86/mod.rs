@@ -1,5 +1,8 @@
 pub mod boot;
+pub mod exceptions;
 pub mod gdt;
+pub mod idt;
+pub mod paging;
 
 // TODO: Look at file structure & add docs
 #[doc(hidden)]
