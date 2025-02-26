@@ -1,47 +1,45 @@
-//! Global Descriptor Table Implementation (gdt.rs)
-//! This module implements the GDT entry structure and manipulation methods.
-//! Each GDT entry (Gate) is a 64-bit structure with the following layout:
-//!
-//! Base Address:  32 bits (split across bits 16-39 and 56-63)
-//! Segment Limit: 20 bits (bits 0-15 and 48-51)
-//! Access Byte:   8 bits  (bits 40-47)
-//!   - Present:     Bit 7 (P)
-//!   - DPL:         Bits 5-6 (Ring Level)
-//!   - Type:        Bit 4 (S)
-//!   - Type flags:  Bits 0-3
-//!
-//! Flags:         4 bits  (bits 52-55)
-//!   - Granularity: Bit 3 (G)
-//!   - Size:        Bit 2 (D/B)
-//!   - Long mode:   Bit 1 (L)
-//!   - Reserved:    Bit 0
+//! The Global Descriptor Table (GDT) is a binary data structure specific to the
+//! x86-64 architecture. It contains entries telling the CPU about
+//! memory segments. A similar Interrupt Descriptor Table exists containing task
+//! and interrupt descriptors.
 //!
 //! For more information go to:
 //! <https://wiki.osdev.org/Global_Descriptor_Table>
 
-const PHYSICAL_GDT_ADDRESS: u32 = 0x00000800;
+use crate::arch::x86::diagnostics::cpu::check_protection_status;
+
 extern "C" {
 	// src/arch/{target}/gdt.asm
 	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
 }
 
-#[doc(hidden)]
-pub type GdtGates = [Gate; 5];
-
-#[doc(hidden)]
-#[derive(Debug, Copy, Clone)]
+/// Entries in the table are accessed by Segment Selectors, which are loaded
+/// into Segmentation registers either by assembly instructions or by hardware
+/// functions such as Interrupts.
 #[repr(C, align(8))]
 pub struct Gate(pub u64);
 
-/// Must be packed to maintain exact CPU-required layout
+/// Represents the complete Global Descriptor Table containing 5 descriptor
+/// entries:
+/// - Entry 0: Null Descriptor (required by CPU)
+/// - Entry 1: Kernel Code Segment
+/// - Entry 2: Kernel Data Segment
+/// - Entry 3: User Code Segment
+/// - Entry 4: User Data Segment
+pub type GdtGates = [Gate; 5];
+
+/// The GDT is pointed to by the value in the GDTR register. This is loaded
+/// using the LGDT assembly instruction, whose argument is a pointer to a GDT
 #[repr(C, packed)]
-#[doc(hidden)]
 pub struct GDTDescriptor {
+	///The size of the table in bytes subtracted by 1
 	pub size: u16,
+	/// The linear address of the GDT (not the physical address, paging
+	/// applies).
 	pub offset: u32,
 }
 
-#[allow(unused)]
+#[doc(hidden)]
 impl Gate {
 	/// Creates a new GDT entry with specified parameters
 	///
@@ -114,28 +112,33 @@ impl Gate {
 
 #[no_mangle]
 #[link_section = ".gdt"]
-pub static GDT_ENTRIES: GdtGates = [
+static GDT_ENTRIES: GdtGates = [
 	Gate(0), // [0] Null Descriptor (CPU requirement)
-	#[cfg(target_arch = "x86")]
 	Gate::new(0, !0, 0b10011010, 0b1100), // [1] Kernel Code: Ring 0, executable
 	Gate::new(0, !0, 0b10010010, 0b1100), // [2] Kernel Data: Ring 0, writable
 	Gate::new(0, !0, 0b11111010, 0b1100), // [3] User Code: Ring 3, executable
 	Gate::new(0, !0, 0b11110010, 0b1100), // [4] User Data: Ring 3, writable
 ];
 
+/// Initializes the Global Descriptor Table (GDT) for the system.
+/// It should be called during early boot.
+///
+/// # Safety
+///
+/// This function uses calls the assembly instruction, which is called in
+/// `gdt_flush`.
 #[no_mangle]
-#[doc(hidden)]
 pub fn gdt_init() {
 	use core::mem::size_of;
 
 	let gdt_descriptor = GDTDescriptor {
 		size: (size_of::<GdtGates>() - 1) as u16,
-		offset: PHYSICAL_GDT_ADDRESS,
+		offset: &GDT_ENTRIES as *const _ as u32,
 	};
 
 	unsafe {
 		gdt_flush(&gdt_descriptor as *const _);
 	}
 
-	//check_protection_status();
+	check_protection_status();
 }
