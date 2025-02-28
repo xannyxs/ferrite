@@ -59,3 +59,8 @@ pub fn outl(addr: u16, val: u32) {
 		asm!("out dx, eax", in("dx") addr, in("eax") val, options(nomem, nostack, preserves_flags));
 	}
 }
+
+#[inline]
+pub fn io_wait() {
+	outb(0x80, 0);
+}

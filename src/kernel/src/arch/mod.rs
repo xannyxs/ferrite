@@ -1,5 +1,5 @@
-#[doc(hidden)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+/// Arch i386
 pub mod x86;
 
 /// The name of the current CPU architecture.

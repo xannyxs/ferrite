@@ -1,39 +1,16 @@
-use crate::{arch::x86::boot::GDT_ENTRIES, println};
+use crate::println;
+use core::arch::asm;
 
 #[doc(hidden)]
 pub fn print_gdt() {
-	println!("Global Descriptor Table (GDT)");
-	println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+	let gdtr: [u8; 6] = [0; 6];
 
-	for (index, mut gate) in GDT_ENTRIES.iter().copied().enumerate() {
-		let descriptor_type = match index {
-			0 => "Null Descriptor",
-			1 => "Kernel Code Segment",
-			2 => "Kernel Data Segment",
-			3 => "User Code Segment",
-			4 => "User Data Segment",
-			_ => "Unknown Segment",
-		};
-
-		let ring_level = match index {
-			0 => "N/A",
-			1 | 2 => "Ring 0 (Kernel)",
-			3 | 4 => "Ring 3 (User)",
-			_ => "Unknown",
-		};
-
-		println!(
-			"Entry [{}]:\n \
-     Type: {}\n \
-     Privilege: {}\n \
-     Access: {:#010b}\n \
-     Flags: {:#06b}\n",
-			index,
-			descriptor_type,
-			ring_level,
-			gate.access(),
-			gate.flags()
-		);
-		println!();
+	unsafe {
+		asm!("sgdt [{}]", in(reg) &gdtr);
 	}
+
+	let limit = u16::from_le_bytes([gdtr[0], gdtr[1]]);
+	let base = u32::from_le_bytes([gdtr[2], gdtr[3], gdtr[4], gdtr[5]]);
+
+	println!("GDTR limit: 0x{:04x}, base: 0x{:08x}", limit, base);
 }

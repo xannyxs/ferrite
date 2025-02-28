@@ -1,6 +1,6 @@
 use crate::{
 	arch::x86::cpu::reboot,
-	libc::console::bin::gdt,
+	libc::console::bin::{gdt, idt},
 	print, println,
 	tty::{tty::WRITER, vga::VGA_HEIGHT},
 };
@@ -100,6 +100,7 @@ impl Console {
 				"clear" => self.clear_screen(),
 				"help" => self.print_help(),
 				"panic" => panic!("Test panic"),
+				"idt" => idt::print_idt(),
 				"" => {}
 				_ => println!("{}: command not found", cmd.trim()),
 			},

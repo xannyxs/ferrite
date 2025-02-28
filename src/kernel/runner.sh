@@ -2,11 +2,8 @@
 
 # Build iso
 
-mkdir -p src/kernel/isodir/boot/grub
-cp "$1" src/kernel/isodir/boot/fungul.bin
-
-cd src/kernel || exit
-
+mkdir -p isodir/boot/grub
+cp "$1" isodir/boot/fungul.bin
 cp grub.cfg isodir/boot/grub/grub.cfg
 grub-mkrescue -o kernel.iso isodir
 
@@ -18,7 +15,7 @@ elif [ "$2" = "debug" ]; then
     export QEMUFLAGS="-serial stdio -s -S"
 else
     # For cargo run, we just need basic serial output
-    export QEMUFLAGS="-serial stdio"
+    export QEMUFLAGS="-monitor stdio"
 fi
 
 qemu-system-i386 -cdrom kernel.iso $QEMUFLAGS
