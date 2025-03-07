@@ -19,9 +19,7 @@ kernel_sync = { path = "../sync/" }
 version = "1.5.0"
 features = ["spin_no_std"]
 
-
 [profile.dev]
-# panic = "abort"
 opt-level = 2
 
 [profile.release]

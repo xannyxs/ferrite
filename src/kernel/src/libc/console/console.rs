@@ -28,7 +28,7 @@ impl Default for Console {
 		let console = Console {
 			b_pos: 0,
 			buffer: [0; 256],
-			prompt: "[shelly]$ ",
+			prompt: "[42]$ ",
 		};
 		print!("{}", console.prompt);
 		return console;

@@ -35,11 +35,53 @@ fn compile_asm(out_dir: &String) {
 	}
 }
 
+fn compile_c(out_dir: &String) {
+	let builtin = Path::new("./src/libc/builtin/");
+	let c_files = fs::read_dir(builtin).unwrap_or_else(|e| {
+		eprint!("Failed to read directory: {}", e);
+		exit(1);
+	});
+
+	for entry in c_files {
+		let path = entry.unwrap().path();
+		if path.extension().and_then(|s| s.to_str()) == Some("c") {
+			let file_stem = path.file_stem().unwrap().to_str().unwrap();
+			let output = format!("{}/{}.o", out_dir, file_stem);
+
+			println!("cargo:warning=Compiling {}", path.display());
+
+			let status = Command::new("gcc")
+				.args([
+					"-c",
+					path.to_str().unwrap(),
+					"-o",
+					&output,
+					"-nostdlib",
+					"-ffreestanding",
+					"-fno-stack-protector",
+					"-mno-red-zone",
+					"-Wall",
+					"-Wextra",
+					"-Wno-unused-command-line-argument",
+					"-Werror",
+				])
+				.status()
+				.expect("Could not compile C file correctly");
+			if !status.success() {
+				eprintln!("C compilation failed for {}", path.display());
+				exit(1);
+			}
+		}
+	}
+}
+
 fn main() {
 	let out_dir = env::var("OUT_DIR").unwrap_or_else(|e| {
 		eprint!("{}", e);
 		exit(1);
 	});
+
+	// compile_c(&out_dir);
 
 	compile_asm(&out_dir);
 
