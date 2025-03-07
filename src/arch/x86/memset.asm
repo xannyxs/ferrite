@@ -31,30 +31,28 @@ memset:
 
 	;    For larger counts with aligned pointer, optimize with DWORD fill
 	test edi, 3
-	jnz  .byte_fill; Not aligned, use byte fill
+	jnz  .byte_fill
 
 	;   Expand the byte value to fill all 4 bytes of eax
 	mov ah, al
 	mov edx, eax
 	shl edx, 16
-	or  eax, edx; eax now contains c in all 4 bytes
+	or  eax, edx
 
 	;   4-byte aligned fill
 	mov edx, ecx
-	shr ecx, 2; Convert count to dwords
+	shr ecx, 2
 	rep stosd
 
 	;   Handle remaining bytes
 	mov ecx, edx
-	and ecx, 3; Get remainder bytes (0-3)
+	and ecx, 3
 	jz  .done
 
 .byte_fill:
-	;   Byte-by-byte fill
 	rep stosb
 
 .done:
-	;   Return the original pointer
 	mov eax, [ebp+8]
 
 	pop edi

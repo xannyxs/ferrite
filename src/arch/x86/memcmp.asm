@@ -24,33 +24,33 @@ memcmp:
 
 	;    Check if count is zero
 	test ecx, ecx
-	jz   .equal; If count is zero, buffers are equal
+	jz   .equal
 
 	;   Check if we can do dword comparison
 	cmp ecx, 4
-	jb  .byte_compare; Less than 4 bytes, use byte comparison
+	jb  .byte_compare
 
 	;    Check alignment
 	mov  eax, esi
 	or   eax, edi
 	test al, 3
-	jnz  .byte_compare; If either pointer is not aligned, use byte comparison
+	jnz  .byte_compare
 
 	;    Compare dwords first
 	mov  edx, ecx
-	shr  ecx, 2; Convert count to dwords
-	repe cmpsd; Compare dwords, exit on inequality or when count is zero
+	shr  ecx, 2
+	repe cmpsd
 	jne  .compare_last_dword
 
 	;   Handle remaining bytes
 	mov ecx, edx
-	and ecx, 3; Get remainder bytes (0-3)
-	jz  .equal; If no remainder and all dwords were equal, buffers are equal
+	and ecx, 3
+	jz  .equal
 
 .byte_compare:
 	;    Byte-by-byte comparison
-	repe cmpsb; Compare bytes, exit on inequality or when count is zero
-	jz   .equal; If we exited due to count reaching zero, buffers are equal
+	repe cmpsb
+	jz   .equal
 
 	;     Return difference between last compared bytes
 	movzx eax, byte [esi-1]
@@ -60,7 +60,7 @@ memcmp:
 
 .compare_last_dword:
 	;   We found unequal dwords, need to find which byte differs
-	sub esi, 4; Go back to beginning of unequal dword
+	sub esi, 4
 	sub edi, 4
 
 	;     Compare first byte
