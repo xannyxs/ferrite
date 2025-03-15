@@ -26,14 +26,10 @@ pkgs.mkShell {
 
     # Other
     grub2
-    gdb
     bear
   ];
 
   shellHook = ''
-    rustup default nightly
-    rustup component add rust-src
-    rustup component add clippy 
     echo "Development environment ready!"
   '';
 }
