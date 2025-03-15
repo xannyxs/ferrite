@@ -4,10 +4,7 @@ ISO=$(KERNEL_DIR)/kernel.iso
 ## Add in CLI --release to compile production code
 CARGO_FLAGS ?= 
 
-KERNEL_DIR = src
-ARCH_DIR = src/arch/x86
 KERNEL_DIR = src/kernel
-LIBC_DIR = src/libc
 
 all:
 	cargo build --manifest-path=src/sync/Cargo.toml $(CARGO_FLAGS)

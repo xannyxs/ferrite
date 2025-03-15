@@ -62,15 +62,20 @@ fn compile_c(out_dir: &String) {
 					"-mno-red-zone",
 					"-Wall",
 					"-Wextra",
-					"-Wno-unused-command-line-argument",
 					"-Werror",
+					"-m32",
+					"-march=i386",
+					"-fPIC",
 				])
 				.status()
 				.expect("Could not compile C file correctly");
+
 			if !status.success() {
 				eprintln!("C compilation failed for {}", path.display());
 				exit(1);
 			}
+
+			println!("cargo:rustc-link-arg={}", output);
 		}
 	}
 }
@@ -81,7 +86,7 @@ fn main() {
 		exit(1);
 	});
 
-	// compile_c(&out_dir);
+	compile_c(&out_dir);
 
 	compile_asm(&out_dir);
 

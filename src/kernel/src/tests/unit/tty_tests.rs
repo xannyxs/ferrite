@@ -1,7 +1,11 @@
 use crate::{
-	println,
-	tty::{tty::WRITER, vga::VGA_HEIGHT},
+	println, println_serial,
+	tty::{
+		tty::WRITER,
+		vga::{Buffer, ColourCode, VgaColour, VGA_HEIGHT, VGA_WIDTH},
+	},
 };
+use core::fmt::Write;
 
 #[test_case]
 fn test_println_simple() {
@@ -14,7 +18,6 @@ fn test_println_many() {
 		println!("test_println_many output");
 	}
 }
-
 #[test_case]
 fn test_println_output() {
 	let s = "Some test string that fits on a single line";
