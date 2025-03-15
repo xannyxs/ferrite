@@ -75,7 +75,6 @@ fn compile_c(out_dir: &String) {
 				exit(1);
 			}
 
-			// Tell Cargo to link this object file
 			println!("cargo:rustc-link-arg={}", output);
 		}
 	}

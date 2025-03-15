@@ -22,7 +22,4 @@ gdt_flush:
 	jmp 0x08:.flush
 
 .flush:
-	extern test_memory_access
-	call   test_memory_access
-
 	ret
