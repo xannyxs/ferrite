@@ -16,6 +16,7 @@
 #![reexport_test_harness_main = "test_main"]
 // Safety and Documentation
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
+#![feature(abi_x86_interrupt)]
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
 #![warn(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
@@ -60,9 +61,10 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use arch::x86::pid::pic_init;
+use arch::x86::pic::pic_init;
+use core::arch::asm;
 use device::keyboard::Keyboard;
-use libc::console::console::Console;
+use libc::console::{bin::idt::print_idt, console::Console};
 use tty::serial::SERIAL;
 
 /* -------------------------------------- */
@@ -74,16 +76,21 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /* -------------------------------------- */
 
-//const PIC_1_OFFSET: u8 = 32;
-//const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+const PIC_1_OFFSET: u8 = 20;
+const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 #[no_mangle]
 #[doc(hidden)]
 pub extern "C" fn kernel_main() -> ! {
+	pic_init(PIC_1_OFFSET, PIC_2_OFFSET);
+
+	unsafe {
+		asm!("sti");
+	}
+
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 	SERIAL.lock().init();
-	//pic_init(PIC_1_OFFSET, PIC_2_OFFSET);
 
 	#[cfg(test)]
 	test_main();

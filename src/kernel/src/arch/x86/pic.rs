@@ -8,7 +8,7 @@
 //! It is important to note that APIC has replaced the 8259 PIC in more modern
 //! systems, especially those with multiple cores/processors.
 
-use super::io::{io_wait, outb};
+use super::io::{inb, io_wait, outb};
 
 const PIC1: u16 = 0x20; /* IO base address for master PIC */
 const PIC2: u16 = 0xa0; /* IO base address for slave PIC */
@@ -33,6 +33,9 @@ const PIC_EOI: u8 = 0x20; /* End-of-interrupt command code */
 
 #[doc(hidden)]
 pub fn pic_init(offset1: u8, offset2: u8) {
+	// let a1 = inb(PIC1_DATA);
+	// let a2 = inb(PIC2_DATA);
+
 	// starts the initialization sequence (in cascade mode)
 	outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
 	io_wait();
@@ -54,11 +57,20 @@ pub fn pic_init(offset1: u8, offset2: u8) {
 	outb(PIC2_DATA, ICW4_8086);
 	io_wait();
 
+	outb(PIC1_DATA, 0xff);
+	outb(PIC2_DATA, 0xff);
+
 	// Unmask both PICs.
-	outb(PIC1_DATA, 0);
-	outb(PIC2_DATA, 0);
+	// outb(PIC1_DATA, a1);
+	// outb(PIC2_DATA, a2);
 }
 
+/// Perhaps the most common command issued to the PIC chips is the end of
+/// interrupt (EOI) command (code 0x20). This is issued to the PIC chips at the
+/// end of an IRQ-based interrupt routine. If the IRQ came from the Master PIC,
+/// it is sufficient to issue this command only to the Master PIC; however if
+/// the IRQ came from the Slave PIC, it is necessary to issue the command to
+/// both PIC chips.
 pub fn send_eoi(irq: u8) {
 	if irq >= 8 {
 		outb(PIC2_COMMAND, PIC_EOI);

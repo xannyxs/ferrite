@@ -15,7 +15,7 @@ elif [ "$2" = "debug" ]; then
     export QEMUFLAGS="-serial stdio -s -S"
 else
     # For cargo run, we just need basic serial output
-    export QEMUFLAGS="-monitor stdio"
+    export QEMUFLAGS="-serial stdio"
 fi
 
 qemu-system-i386 -cdrom kernel.iso $QEMUFLAGS
