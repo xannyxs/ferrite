@@ -86,6 +86,7 @@ pub extern "C" fn kernel_main() -> ! {
 
 	unsafe {
 		asm!("sti");
+		asm!("int $6");
 	}
 
 	let mut keyboard = Keyboard::default();

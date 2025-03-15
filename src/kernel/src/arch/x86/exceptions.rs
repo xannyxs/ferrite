@@ -66,19 +66,19 @@ pub extern "x86-interrupt" fn non_maskable_interrupt_handler() {
 }
 
 pub extern "x86-interrupt" fn breakpoint_handler() {
-	println_serial!("Interrupt in debug");
+	println_serial!("Interrupt in breakpoint_handler");
 }
 
 pub extern "x86-interrupt" fn overflow_handler() {
-	println_serial!("Interrupt in debug");
+	println_serial!("Interrupt in overflow_handler");
 }
 
 pub extern "x86-interrupt" fn bound_range_exceeded_handler() {
-	println_serial!("Interrupt in debug");
+	println_serial!("Interrupt in bound_range_exceeded_handler");
 }
 
 pub extern "x86-interrupt" fn invalid_opcode() {
-	println_serial!("Interrupt in debug");
+	println_serial!("Interrupt in invalid_opcode");
 }
 
 pub extern "x86-interrupt" fn device_not_available() {
