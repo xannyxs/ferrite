@@ -64,8 +64,6 @@ _start:
 	extern kernel_main
 	call   kernel_main
 
-	cli ; Disable interrupts
-
 .hang:
 	hlt ; Halt the CPU
 	jmp .hang

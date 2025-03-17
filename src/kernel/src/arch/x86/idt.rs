@@ -10,19 +10,13 @@
 //! Before you implement the IDT, make sure you have a working GDT.
 
 use super::exceptions;
+use crate::{arch::x86::exceptions::INTERRUPT_HANDLERS, println_serial};
 use core::arch::asm;
 use kernel_sync::Mutex;
 use lazy_static::lazy_static;
 
 #[doc(hidden)]
 pub const IDT_ENTRY_COUNT: usize = 256;
-
-lazy_static! {
-	/// Global Interrupt Descriptor Table with thread-safe access.
-	/// Lazily initialized array of all 256 interrupt handler entries.
-	pub static ref IDT_ENTRIES: Mutex<[InterruptDescriptorEntry; IDT_ENTRY_COUNT]> =
-		Mutex::new([InterruptDescriptorEntry::default(); IDT_ENTRY_COUNT]);
-}
 
 /// The location of the IDT is kept in the IDTR (IDT register). This is loaded
 /// using the LIDT assembly instruction, whose argument is a pointer to an IDT
@@ -50,8 +44,8 @@ pub struct InterruptDescriptorEntry {
 	pointer_high: u16,   // offset bits 16..31
 }
 
-impl Default for InterruptDescriptorEntry {
-	fn default() -> Self {
+impl InterruptDescriptorEntry {
+	const fn new() -> Self {
 		return Self {
 			pointer_low: 0,
 			selector: 0,
@@ -60,7 +54,18 @@ impl Default for InterruptDescriptorEntry {
 			pointer_high: 0,
 		};
 	}
+
+	pub fn set_handler(&mut self, handler: extern "x86-interrupt" fn()) {
+		self.pointer_low = (handler as usize & 0xffff) as u16;
+		self.selector = 0x08;
+		self.zero = 0;
+		self.type_attributes = 0b1000_1110;
+		self.pointer_high = ((handler as usize >> 16) & 0xffff) as u16;
+	}
 }
+
+pub static mut IDT_ENTRIES: [InterruptDescriptorEntry; IDT_ENTRY_COUNT] =
+	[InterruptDescriptorEntry::new(); IDT_ENTRY_COUNT];
 
 /// Initializes the Interrupt Descriptor Table (IDT) for the system.
 ///
@@ -74,24 +79,17 @@ impl Default for InterruptDescriptorEntry {
 #[no_mangle]
 pub fn idt_init() {
 	use core::mem::size_of;
-
-	{
-		// TODO: Might change this approach to `Once`
-		let mut entries = IDT_ENTRIES.lock();
-		for i in 0..IDT_ENTRY_COUNT {
-			entries[i] = InterruptDescriptorEntry::default();
-		}
-		// The lock is automatically released here when `entries` goes out of
-		// scope
-	}
-
-	let idt_descriptor = InterruptDescriptorTable {
-		size: (size_of::<[InterruptDescriptorEntry; IDT_ENTRY_COUNT]>() - 1)
-			as u16,
-		offset: &IDT_ENTRIES as *const _ as u32,
-	};
-
 	unsafe {
+		for i in 0..INTERRUPT_HANDLERS.len() {
+			IDT_ENTRIES[i].set_handler(INTERRUPT_HANDLERS[i]);
+		}
+
+		let idt_descriptor = InterruptDescriptorTable {
+			size: (size_of::<[InterruptDescriptorEntry; IDT_ENTRY_COUNT]>() - 1)
+				as u16,
+			offset: &raw const IDT_ENTRIES as *const _ as u32,
+		};
+
 		asm!("lidt [{}]", in(reg) &idt_descriptor);
 	}
 }
