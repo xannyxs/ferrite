@@ -6,11 +6,12 @@
 //! For more information go to:
 //! <https://wiki.osdev.org/Global_Descriptor_Table>
 
+use super::DescriptorTable;
 use crate::arch::x86::diagnostics::cpu::check_protection_status;
 
 extern "C" {
 	// src/arch/{target}/gdt.asm
-	fn gdt_flush(gdt_ptr: *const GDTDescriptor);
+	fn gdt_flush(gdt_ptr: *const DescriptorTable);
 }
 
 /// Entries in the table are accessed by Segment Selectors, which are loaded
@@ -27,17 +28,6 @@ pub struct Gate(pub u64);
 /// - Entry 3: User Code Segment
 /// - Entry 4: User Data Segment
 pub type GdtGates = [Gate; 5];
-
-/// The GDT is pointed to by the value in the GDTR register. This is loaded
-/// using the LGDT assembly instruction, whose argument is a pointer to a GDT
-#[repr(C, packed)]
-pub struct GDTDescriptor {
-	///The size of the table in bytes subtracted by 1
-	pub size: u16,
-	/// The linear address of the GDT (not the physical address, paging
-	/// applies).
-	pub offset: u32,
-}
 
 #[doc(hidden)]
 impl Gate {
@@ -131,7 +121,7 @@ static GDT_ENTRIES: GdtGates = [
 pub fn gdt_init() {
 	use core::mem::size_of;
 
-	let gdt_descriptor = GDTDescriptor {
+	let gdt_descriptor = DescriptorTable {
 		size: (size_of::<GdtGates>() - 1) as u16,
 		offset: &GDT_ENTRIES as *const _ as u32,
 	};

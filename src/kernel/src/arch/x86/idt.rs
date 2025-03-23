@@ -9,26 +9,20 @@
 //!
 //! Before you implement the IDT, make sure you have a working GDT.
 
-use super::exceptions;
-use crate::{arch::x86::exceptions::INTERRUPT_HANDLERS, println_serial};
+use super::exceptions::{self, InterruptHandler, InterruptHandlerWithError};
+use crate::{
+	arch::x86::{
+		exceptions::{InterruptHandlerType, INTERRUPT_HANDLERS},
+		DescriptorTable,
+	},
+	println_serial,
+};
 use core::arch::asm;
 use kernel_sync::Mutex;
 use lazy_static::lazy_static;
 
 #[doc(hidden)]
 pub const IDT_ENTRY_COUNT: usize = 256;
-
-/// The location of the IDT is kept in the IDTR (IDT register). This is loaded
-/// using the LIDT assembly instruction, whose argument is a pointer to an IDT
-/// Descriptor structure.
-#[repr(C, packed)]
-pub struct InterruptDescriptorTable {
-	/// One less than the size of the IDT in bytes.
-	size: u16,
-	/// The linear address of the Interrupt Descriptor Table (not the
-	/// physical address, paging applies).
-	offset: u32,
-}
 
 /// An Interrupt Descriptor Table entry.
 ///
@@ -55,7 +49,19 @@ impl InterruptDescriptorEntry {
 		};
 	}
 
-	pub fn set_handler(&mut self, handler: extern "x86-interrupt" fn()) {
+	/// Configures an IDT entry with the specified interrupt handler
+	pub fn set_handler(&mut self, handler: InterruptHandler) {
+		self.pointer_low = (handler as usize & 0xffff) as u16;
+		self.selector = 0x08;
+		self.zero = 0;
+		self.type_attributes = 0b1000_1110;
+		self.pointer_high = ((handler as usize >> 16) & 0xffff) as u16;
+	}
+
+	pub fn set_handler_with_error_code(
+		&mut self,
+		handler: InterruptHandlerWithError,
+	) {
 		self.pointer_low = (handler as usize & 0xffff) as u16;
 		self.selector = 0x08;
 		self.zero = 0;
@@ -64,6 +70,9 @@ impl InterruptDescriptorEntry {
 	}
 }
 
+/// Static array of 256 IDT entries, zero-initialized
+///
+/// Lives for the duration of kernel execution
 pub static mut IDT_ENTRIES: [InterruptDescriptorEntry; IDT_ENTRY_COUNT] =
 	[InterruptDescriptorEntry::new(); IDT_ENTRY_COUNT];
 
@@ -81,10 +90,17 @@ pub fn idt_init() {
 	use core::mem::size_of;
 	unsafe {
 		for i in 0..INTERRUPT_HANDLERS.len() {
-			IDT_ENTRIES[i].set_handler(INTERRUPT_HANDLERS[i]);
+			match INTERRUPT_HANDLERS[i] {
+				InterruptHandlerType::Regular(handler) => {
+					IDT_ENTRIES[i].set_handler(handler);
+				}
+				InterruptHandlerType::WithErrorCode(handler) => {
+					IDT_ENTRIES[i].set_handler_with_error_code(handler);
+				}
+			}
 		}
 
-		let idt_descriptor = InterruptDescriptorTable {
+		let idt_descriptor = DescriptorTable {
 			size: (size_of::<[InterruptDescriptorEntry; IDT_ENTRY_COUNT]>() - 1)
 				as u16,
 			offset: &raw const IDT_ENTRIES as *const _ as u32,

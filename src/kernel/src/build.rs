@@ -101,9 +101,11 @@ fn main() {
 	println!("cargo:rustc-link-arg=-T../arch/x86/x86.ld");
 
 	// Watch for changes
-	println!("cargo:rerun-if-changed=../arch/x86/test_gdt.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/gdt.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/boot.asm");
 	println!("cargo:rerun-if-changed=../arch/x86/paging.asm");
+	println!("cargo:rerun-if-changed=./src/libc/builtin/memset.c");
+	println!("cargo:rerun-if-changed=./src/libc/builtin/memcpy.c");
+	println!("cargo:rerun-if-changed=./src/libc/builtin/memcmp.c");
 	println!("cargo:rerun-if-changed=../arch/x86/x86.ld");
 }

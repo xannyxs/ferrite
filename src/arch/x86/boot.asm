@@ -48,21 +48,33 @@ stack_top:
 _start:
 	mov esp, stack_top
 
-	;      Init gdt
+	;      Fetch extern functions
 	extern gdt_init
-	call   gdt_init
-
-	;      Init idt
 	extern idt_init
-	call   idt_init
-
-	;      Init paging
 	extern enable_paging
-	call   enable_paging
-
-	;      Call kernel
+	extern pic_remap
 	extern kernel_main
-	call   kernel_main
+
+	;    Init gdt
+	call gdt_init
+
+	;    Init idt
+	call idt_init
+
+	;    Init paging
+	call enable_paging
+
+	;    Initiate PIC
+	push 28
+	push 20
+	call pic_remap
+	add  esp, 8
+
+	; Activate interrupts
+	sti
+
+	;    Call kernel
+	call kernel_main
 
 .hang:
 	hlt ; Halt the CPU

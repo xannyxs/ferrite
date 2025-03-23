@@ -32,7 +32,8 @@ const ICW4_SFNM: u8 = 0x10; /* Special fully nested (not) */
 const PIC_EOI: u8 = 0x20; /* End-of-interrupt command code */
 
 #[doc(hidden)]
-pub fn pic_init(offset1: u8, offset2: u8) {
+#[no_mangle]
+pub fn pic_remap(offset1: u8, offset2: u8) {
 	// let a1 = inb(PIC1_DATA);
 	// let a2 = inb(PIC2_DATA);
 

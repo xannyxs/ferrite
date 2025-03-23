@@ -61,7 +61,6 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use arch::x86::pic::pic_init;
 use core::arch::asm;
 use device::keyboard::Keyboard;
 use libc::console::{bin::idt::print_idt, console::Console};
@@ -76,19 +75,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /* -------------------------------------- */
 
-const PIC_1_OFFSET: u8 = 20;
-const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
-
 #[no_mangle]
 #[doc(hidden)]
 pub extern "C" fn kernel_main() -> ! {
-	pic_init(PIC_1_OFFSET, PIC_2_OFFSET);
-
-	unsafe {
-		asm!("sti");
-		asm!("int $6");
-	}
-
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 	SERIAL.lock().init();
