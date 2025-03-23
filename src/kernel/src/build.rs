@@ -66,6 +66,8 @@ fn compile_c(out_dir: &String) {
 					"-m32",
 					"-march=i386",
 					"-fPIC",
+					"-O3",
+					"-I./src/libc/builtin/",
 				])
 				.status()
 				.expect("Could not compile C file correctly");

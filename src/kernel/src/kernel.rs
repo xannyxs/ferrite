@@ -61,10 +61,18 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use core::arch::asm;
+use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::{bin::idt::print_idt, console::Console};
 use tty::serial::SERIAL;
+
+/* -------------------------------------- */
+
+/* extern "C" {
+	fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+	fn memset(str: *mut c_void, c: i32, len: usize) -> *mut c_void;
+	fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> i32;
+} */
 
 /* -------------------------------------- */
 
