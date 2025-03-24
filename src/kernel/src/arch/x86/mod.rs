@@ -1,5 +1,6 @@
 pub mod gdt;
 pub mod idt;
+pub mod memory;
 pub mod pic;
 
 /* -------------------------------------- */
@@ -15,10 +16,14 @@ pub mod exceptions;
 pub mod io;
 #[doc(hidden)]
 pub mod paging;
-#[doc(hidden)]
-pub mod target;
 
 /* -------------------------------------- */
+
+#[cfg(not(any(target_arch = "x86")))]
+compile_error!("This code needs to be compiled for i686/x86!");
+
+#[cfg(not(target_pointer_width = "32"))]
+compile_error!("This code needs to be compiled for 32-bit architecture!");
 
 /// Descriptor structure for CPU tables (IDT/GDT).
 ///

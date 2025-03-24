@@ -61,6 +61,7 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
+use arch::x86::memory::get_page_directory;
 use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::{bin::idt::print_idt, console::Console};
@@ -76,13 +77,6 @@ use tty::serial::SERIAL;
 
 /* -------------------------------------- */
 
-/// The kernel's name.
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-/// Current kernel version.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/* -------------------------------------- */
-
 #[no_mangle]
 #[doc(hidden)]
 pub extern "C" fn kernel_main() -> ! {
@@ -92,6 +86,11 @@ pub extern "C" fn kernel_main() -> ! {
 
 	#[cfg(test)]
 	test_main();
+
+	unsafe {
+		let entry = get_page_directory();
+		println_serial!("{:?}", entry);
+	}
 
 	loop {
 		let c = match keyboard.input() {

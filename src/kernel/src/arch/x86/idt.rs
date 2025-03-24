@@ -58,6 +58,8 @@ impl InterruptDescriptorEntry {
 		self.pointer_high = ((handler as usize >> 16) & 0xffff) as u16;
 	}
 
+	/// Configures an IDT entry with the specified interrupt handler & error
+	/// code
 	pub fn set_handler_with_error_code(
 		&mut self,
 		handler: InterruptHandlerWithError,
