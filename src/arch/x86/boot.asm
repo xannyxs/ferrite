@@ -33,7 +33,7 @@
 
 	;       Second section: Stack setup
 	section .bss
-	align   16; Ensure proper alignment for the stack
+	align   16
 
 stack_bottom:
 	resb 16384; Reserve 16KB for our stack
@@ -42,16 +42,34 @@ stack_top:
 
 	; ----------------------------------------------
 
-	section .text
+	section .boot
 	global  _start:function
 
 _start:
+	mov eax, (initial_page_dir - 0xC0000000)
+	mov cr3, eax
+
+	mov ecx, cr4
+	or  ecx, 0x10
+	mov cr4, ecx
+
+	mov ecx, cr0
+	or  ecx, 0x80000000
+	mov cr0, ecx
+
+	jmp higher_half
+
+section .text
+
+higher_half:
 	mov esp, stack_top
+
+	push ebx
+	xor  ebp, ebp
 
 	;      Fetch extern functions
 	extern gdt_init
 	extern idt_init
-	extern enable_paging
 	extern pic_remap
 	extern kernel_main
 
@@ -60,9 +78,6 @@ _start:
 
 	;    Init idt
 	call idt_init
-
-	;    Init paging
-	call enable_paging
 
 	;    Initiate PIC
 	push 28
@@ -82,3 +97,17 @@ _start:
 
 .end:
 	global _start.end
+
+	section .data
+	align   4096
+	global  initial_page_dir
+
+initial_page_dir:
+	dd    10000011b
+	times (768 - 1) dd 0
+
+	dd    (0 << 22) | 10000011b
+	dd    (1 << 22) | 10000011b
+	dd    (2 << 22) | 10000011b
+	dd    (3 << 22) | 10000011b
+	times (1024 - 768 - 4) dd 0
