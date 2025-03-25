@@ -18,7 +18,8 @@
 	;        Multiboot header constants
 	MBALIGN  equ 1<<0; Align loaded modules on page boundaries
 	MEMINFO  equ 1<<1; Provide memory map
-	MBFLAGS  equ MBALIGN | MEMINFO; Combine our flags
+	VIDEO    equ 1<<2; Video mode
+	MBFLAGS  equ MBALIGN | MEMINFO | VIDEO; Combine our flags
 	MAGIC    equ 0x1BADB002; Magic number lets bootloader find the header
 	CHECKSUM equ -(MAGIC + MBFLAGS); Checksum required by multiboot standard
 
@@ -28,6 +29,11 @@
 	dd      MAGIC; Write the magic number
 	dd      MBFLAGS; Write the flags
 	dd      CHECKSUM; Write the checksum
+	dd      0, 0, 0, 0, 0; Reserved fields
+	dd      1; Mode type: 1 means text mode
+	dd      80; Width in characters
+	dd      25; Height in characters
+	dd      0; Depth (0 for text mode)
 
 	; ----------------------------------------------
 
@@ -46,8 +52,11 @@ stack_top:
 	global  _start:function
 
 _start:
-	mov eax, (initial_page_dir - 0xC0000000)
-	mov cr3, eax
+	mov dx, 0x3F8; COM1 port
+	out dx, al
+
+	mov ecx, (initial_page_dir - 0xC0000000)
+	mov cr3, ecx
 
 	mov ecx, cr4
 	or  ecx, 0x10
@@ -64,7 +73,11 @@ section .text
 higher_half:
 	mov esp, stack_top
 
+	mov dx, 0x3F8
+	out dx, al
+
 	push ebx
+	push eax
 	xor  ebp, ebp
 
 	;      Fetch extern functions

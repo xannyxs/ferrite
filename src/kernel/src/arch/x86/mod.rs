@@ -1,6 +1,7 @@
 pub mod gdt;
 pub mod idt;
 pub mod memory;
+pub mod multiboot;
 pub mod pic;
 
 /* -------------------------------------- */
@@ -14,8 +15,6 @@ pub mod diagnostics;
 pub mod exceptions;
 #[doc(hidden)]
 pub mod io;
-#[doc(hidden)]
-pub mod paging;
 
 /* -------------------------------------- */
 
