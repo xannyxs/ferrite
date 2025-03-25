@@ -13,43 +13,44 @@
 
 ENTRY(_start)
 
-SECTIONS
-  {
+SECTIONS {
   /* Start at 2MB */
   . = 2M;
 
-  gdt_start = .;
-  .gdt 0x800 : ALIGN(0x800)
-    {
+  .gdt 0x800 : ALIGN(0x800) {
     *(.gdt)
   }
-  gdt_end = .;
 
-  /* Text section with multiboot header */
-  multiboot_start = .;
-  .text BLOCK(4K) : ALIGN(4K)
-    {
+  .multiboot ALIGN(4K) : {
     KEEP(*(.multiboot))
+  }
+
+  .note.gnu.build-id ALIGN(4K) : {
+    *(.note.gnu.build-id)
+  }
+
+  .boot ALIGN(4K) : {
+    *(.boot)
+  }
+
+  . += 0xC0000000;
+
+  .text ALIGN(4K) : AT(ADDR(.text) - 0xC0000000) {
     *(.text)
   }
-  multiboot_end = .;
 
-  /* Read-only data. */
-  .rodata BLOCK(4K) : ALIGN(4K)
-    {
+  .rodata ALIGN(4K) : AT(ADDR(.rodata) - 0xC0000000) {
     *(.rodata)
   }
 
-  /* Read-write data (initialized) */
-  .data BLOCK(4K) : ALIGN(4K)
-    {
+  .data ALIGN(4K) : AT(ADDR(.data) - 0xC0000000) {
     *(.data)
   }
 
-  /* Read-write data (uninitialized) and stack */
-  .bss BLOCK(4K) : ALIGN(4K)
-    {
+  .bss ALIGN(4K) : AT(ADDR(.bss) - 0xC0000000) {
     *(COMMON)
     *(.bss)
   }
+
+  _kernel_end = .;
 }

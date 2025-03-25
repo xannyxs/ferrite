@@ -1,15 +1,14 @@
 #include <stddef.h>
 
 void *memset(void *str, int c, size_t len) {
-  size_t i;
-  unsigned char *s;
+  size_t i = 0;
+  unsigned char *s = (unsigned char *)str;
 
-  s = (unsigned char *)str;
-  i = 0;
   while (len) {
     len--;
     s[i] = c;
     i++;
   }
-  return (s);
+
+  return s;
 }

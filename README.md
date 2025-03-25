@@ -7,6 +7,7 @@ Fungul is an experimental kernel written in Rust. Just as fungal networks in nat
 ## Building from Source
 
 You'll need:
+
 - `nix-shell` for an isolated development environment
 - QEMU for testing
 
@@ -41,5 +42,4 @@ The name "Fungul" draws inspiration from both Unix naming conventions and natura
 
 ## License
 
-Fungul is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
+Fungul is licensed under the GPL License. See [LICENSE](LICENSE) for details.

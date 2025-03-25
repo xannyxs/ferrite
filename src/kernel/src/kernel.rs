@@ -53,7 +53,7 @@ pub mod libc;
 /// Macro directory
 pub mod macros;
 /// Memory allocation
-//pub mod memory;
+pub mod memory;
 /// Panic
 pub mod panic;
 /// Tests
@@ -61,40 +61,84 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use arch::x86::pic::pic_init;
-use core::arch::asm;
+extern crate alloc;
+
+use alloc::boxed::Box;
+use arch::x86::{
+	memory::get_page_directory,
+	multiboot::{MultibootInfo, MultibootMmapEntry},
+};
+use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::{bin::idt::print_idt, console::Console};
 use tty::serial::SERIAL;
 
 /* -------------------------------------- */
 
-/// The kernel's name.
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-/// Current kernel version.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+const MAGIC_VALUE: u32 = 0x2badb002;
+
+/* extern "C" {
+	fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+	fn memset(str: *mut c_void, c: i32, len: usize) -> *mut c_void;
+	fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> i32;
+} */
 
 /* -------------------------------------- */
 
-const PIC_1_OFFSET: u8 = 20;
-const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
-
 #[no_mangle]
 #[doc(hidden)]
-pub extern "C" fn kernel_main() -> ! {
-	pic_init(PIC_1_OFFSET, PIC_2_OFFSET);
-
-	unsafe {
-		asm!("sti");
-		asm!("int $6");
+pub extern "C" fn kernel_main(
+	magic_number: u32,
+	boot_info: &'static MultibootInfo,
+) -> ! {
+	if magic_number != MAGIC_VALUE {
+		panic!(
+			"Incorrect magic number. Current magic number: 0x{:x}",
+			magic_number
+		);
 	}
 
+	if (boot_info.flags & 0x7) != 0x7 {
+		let flags = boot_info.flags;
+
+		panic!(
+        "Required flags not set. Expected MBALIGN, MEMINFO, and VIDEO to be set, but flag value is: 0b{:b}",
+        flags
+    );
+	}
+
+	SERIAL.lock().init();
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
-	SERIAL.lock().init();
 
 	#[cfg(test)]
 	test_main();
+
+	unsafe {
+		let entry = get_page_directory();
+		println_serial!("{:?}", entry);
+	}
+
+	let x = Box::new(42);
+
+	println_serial!("{x}");
+
+	for i in 0..5 {
+		#[allow(fuzzy_provenance_casts)]
+		let mmap = (boot_info.mmap_addr
+			+ core::mem::size_of::<MultibootMmapEntry>() as u32 * i)
+			as *const MultibootMmapEntry;
+
+		unsafe {
+			println_serial!("Section: {}", i);
+			let size = (*mmap).addr;
+			let addr = (*mmap).size;
+			let len = (*mmap).len;
+			println_serial!("Size: {}", size);
+			println_serial!("Addr: 0x{:x}", addr);
+			println_serial!("Len: {}", len);
+		}
+	}
 
 	loop {
 		let c = match keyboard.input() {
