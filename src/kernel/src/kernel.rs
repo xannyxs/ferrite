@@ -53,7 +53,7 @@ pub mod libc;
 /// Macro directory
 pub mod macros;
 /// Memory allocation
-//pub mod memory;
+pub mod memory;
 /// Panic
 pub mod panic;
 /// Tests
@@ -61,6 +61,9 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
+extern crate alloc;
+
+use alloc::boxed::Box;
 use arch::x86::{
 	memory::get_page_directory,
 	multiboot::{MultibootInfo, MultibootMmapEntry},
@@ -116,9 +119,9 @@ pub extern "C" fn kernel_main(
 		println_serial!("{:?}", entry);
 	}
 
-	let mmap_len = boot_info.mmap_length;
+	let x = Box::new(42);
 
-	println_serial!("{}", mmap_len);
+	println_serial!("{x}");
 
 	for i in 0..5 {
 		#[allow(fuzzy_provenance_casts)]
