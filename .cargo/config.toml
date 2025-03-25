@@ -1,5 +1,5 @@
 [unstable]
-build-std = ["core"]
+build-std = ["core", "alloc"]
 
 [build]
 target="src/arch/x86/x86.json"
