@@ -1,7 +1,7 @@
-use super::region::get_primary_memory_region;
+use super::{region::get_primary_memory_region, stack::STACK};
 use crate::{
 	arch::x86::multiboot::{MultibootInfo, MultibootMmapEntry},
-	memory::{stack::KernelStack, MemorySegment, RegionType},
+	memory::{stack::KernelStack, MemorySegment, RegionType, PAGE_SIZE},
 	println_serial,
 	sync::locked::Locked,
 };
@@ -95,6 +95,35 @@ impl BuddyAllocator {
 		let memory_segment = get_primary_memory_region(boot_info);
 		self.start_addr = memory_segment.start_addr() as usize;
 		self.len = memory_segment.size() as usize;
+
+		let mut guarded = STACK.lock();
+		let kernel_stack: &mut KernelStack = match guarded.get_mut() {
+			Some(ks) => ks,
+			None => {
+				panic!("Attempted to use STACK before it was initialized!");
+			}
+		};
+
+		let levels = (self.len / PAGE_SIZE).ilog2() as usize;
+		let total_bits: usize = (1 << (levels + 1)) - 1;
+		let bits_per_usize = core::mem::size_of::<usize>() * 8;
+		let map_size = total_bits.div_ceil(bits_per_usize);
+
+		self.map = unsafe {
+			match kernel_stack.create_usize_array(map_size) {
+				Ok(slice) => slice,
+				Err(e) => {
+					println_serial!("Notice: {}", e);
+
+					let available_elements = kernel_stack.size();
+
+					#[allow(clippy::expect_used)]
+					kernel_stack
+						.create_usize_array(available_elements)
+						.expect("Critical: Could not allocate even minimal map")
+				}
+			}
+		};
 	}
 
 	/// Finds a free block of memory of the requested size.

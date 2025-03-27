@@ -116,13 +116,13 @@ pub extern "C" fn kernel_main(
     );
 	}
 
-	ALLOCATOR.lock().init(boot_info);
 	unsafe {
 		match STACK.lock().set(KernelStack::new()) {
 			Ok(()) => {}
 			Err(_) => panic!("Stack was already initialized"),
 		}
 	}
+	ALLOCATOR.lock().init(boot_info);
 
 	let test = Box::new("Hello Wereld");
 	println_serial!("{}", test);

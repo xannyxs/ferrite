@@ -20,6 +20,7 @@ pub static STACK: Mutex<OnceCell<KernelStack>> = Mutex::new(OnceCell::new());
 pub struct KernelStack {
 	bottom: usize,
 	size: usize,
+	used_size: usize,
 }
 
 impl fmt::Debug for KernelStack {
@@ -40,18 +41,42 @@ impl KernelStack {
 	/// - Must only be called during kernel initialization
 	/// - The stack_bottom symbol must be properly defined in assembly
 	/// - Assumes 16KB of stack space is available from stack_bottom
-	pub const unsafe fn new() -> Self {
+	pub unsafe fn new() -> Self {
+		let bottom = unsafe { &stack_bottom as *const u8 as usize };
+
 		return Self {
-			bottom: 0,
-			size: 0,
+			bottom,
+			size: 16384,
+			used_size: 0,
 		};
 	}
 
-	pub unsafe fn init(&mut self) {
-		let bottom = unsafe { &stack_bottom as *const u8 as usize };
+	pub fn size(&self) -> usize {
+		return self.size;
+	}
 
-		self.bottom = bottom;
-		self.size = 16384;
+	pub unsafe fn create_usize_array(
+		&mut self,
+		map_size: usize,
+	) -> Result<&'static mut [usize], &'static str> {
+		use core::{
+			ptr::with_exposed_provenance_mut, slice::from_raw_parts_mut,
+		};
+
+		let new_used_size =
+			self.used_size + map_size * core::mem::size_of::<usize>();
+
+		if new_used_size > self.size {
+			return Err("Warning: Requested size exceeds stack space");
+		}
+
+		self.used_size = new_used_size;
+
+		let stack = with_exposed_provenance_mut(self.bottom + self.used_size);
+
+		unsafe {
+			return Ok(from_raw_parts_mut(stack, map_size));
+		}
 	}
 
 	/// Creates a mutable slice for memory segments, leaving buffer space.
