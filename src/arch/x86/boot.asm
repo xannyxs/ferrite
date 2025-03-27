@@ -38,11 +38,13 @@
 	; ----------------------------------------------
 
 	;       Second section: Stack setup
+	global  stack_bottom
 	section .bss
 	align   16
 
 stack_bottom:
-	resb 16384; Reserve 16KB for our stack
+	;WARNING Do not change value without change it in memory/stack.rs
+	resb     16384; Reserve 16KB for our stack.
 
 stack_top:
 

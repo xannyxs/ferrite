@@ -56,22 +56,31 @@ pub mod macros;
 pub mod memory;
 /// Panic
 pub mod panic;
+/// Sync - Threadsafe structs
+pub mod sync;
 /// Tests
 pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-extern crate alloc;
-
 use alloc::boxed::Box;
 use arch::x86::{
+	cpu::halt,
 	memory::get_page_directory,
 	multiboot::{MultibootInfo, MultibootMmapEntry},
 };
 use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
+use kernel_sync::Mutex;
 use libc::console::{bin::idt::print_idt, console::Console};
+use memory::{
+	allocator::{BuddyAllocator, ALLOCATOR},
+	region::get_primary_memory_region,
+	stack::{KernelStack, STACK},
+};
 use tty::serial::SERIAL;
+
+extern crate alloc;
 
 /* -------------------------------------- */
 
@@ -107,38 +116,27 @@ pub extern "C" fn kernel_main(
     );
 	}
 
+	ALLOCATOR.lock().init(boot_info);
+	unsafe {
+		match STACK.lock().set(KernelStack::new()) {
+			Ok(()) => {}
+			Err(_) => panic!("Stack was already initialized"),
+		}
+	}
+
+	let test = Box::new("Hello Wereld");
+	println_serial!("{}", test);
+
+	let another_test = Box::new("Cool");
+	println_serial!("{}", another_test);
+	println_serial!("{}", test);
+
 	SERIAL.lock().init();
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 
 	#[cfg(test)]
 	test_main();
-
-	unsafe {
-		let entry = get_page_directory();
-		println_serial!("{:?}", entry);
-	}
-
-	let x = Box::new(42);
-
-	println_serial!("{x}");
-
-	for i in 0..5 {
-		#[allow(fuzzy_provenance_casts)]
-		let mmap = (boot_info.mmap_addr
-			+ core::mem::size_of::<MultibootMmapEntry>() as u32 * i)
-			as *const MultibootMmapEntry;
-
-		unsafe {
-			println_serial!("Section: {}", i);
-			let size = (*mmap).addr;
-			let addr = (*mmap).size;
-			let len = (*mmap).len;
-			println_serial!("Size: {}", size);
-			println_serial!("Addr: 0x{:x}", addr);
-			println_serial!("Len: {}", len);
-		}
-	}
 
 	loop {
 		let c = match keyboard.input() {
