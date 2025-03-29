@@ -46,6 +46,8 @@
 
 /// Specific Bare Metal support
 pub mod arch;
+/// Collectiosn - Datatypes and structures
+pub mod collections;
 /// Device Support - Keyboard & Mouse
 pub mod device;
 /// Libc - STD Library (Should move in future)
@@ -63,19 +65,19 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
+use crate::arch::x86::multiboot::G_SEGMENTS;
 use alloc::boxed::Box;
 use arch::x86::{
 	cpu::halt,
 	memory::get_page_directory,
-	multiboot::{MultibootInfo, MultibootMmapEntry},
+	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
 };
 use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use kernel_sync::Mutex;
-use libc::console::{bin::idt::print_idt, console::Console};
+use libc::console::console::Console;
 use memory::{
-	allocator::{BuddyAllocator, ALLOCATOR},
-	region::get_primary_memory_region,
+	allocator::ALLOCATOR,
 	stack::{KernelStack, STACK},
 };
 use tty::serial::SERIAL;
@@ -122,13 +124,12 @@ pub extern "C" fn kernel_main(
 			Err(_) => panic!("Stack was already initialized"),
 		}
 	}
-	ALLOCATOR.lock().init(boot_info);
 
-	let test = Box::new("Hello Wereld");
-	println_serial!("{}", test);
+	let mut segments = G_SEGMENTS.lock();
+	get_memory_region(&mut segments, boot_info);
+	ALLOCATOR.lock().init(&mut segments);
 
-	let another_test = Box::new("Cool");
-	println_serial!("{}", another_test);
+	let test = Box::new("Hello wereld");
 	println_serial!("{}", test);
 
 	SERIAL.lock().init();

@@ -1,4 +1,10 @@
-use crate::memory::RegionType;
+use crate::{
+	memory::{MemorySegment, RegionType},
+	println_serial,
+	sync::locked::Locked,
+};
+use kernel_sync::mutex::MutexGuard;
+use lazy_static::lazy_static;
 
 #[allow(missing_docs)]
 #[cfg(target_arch = "x86")]
@@ -102,4 +108,67 @@ pub struct MultibootInfo {
 	/// Address of APM (Advanced Power Management) table.
 	/// Only valid if flags[10] is set.
 	apm_table: u32,
+}
+
+// TODO: Add Mutex
+lazy_static! {
+	pub static ref G_SEGMENTS: Locked<[MemorySegment; 16]> =
+		Locked::new([MemorySegment::empty(); 16]);
+}
+
+pub fn get_memory_region(
+	segments: &mut [MemorySegment; 16],
+	boot_info: &MultibootInfo,
+) {
+	use core::{mem, ptr};
+
+	let mut count = 0;
+	let mut mmap = boot_info.mmap_addr as usize;
+	let mmap_end = (boot_info.mmap_addr + boot_info.mmap_length) as usize;
+
+	while mmap < mmap_end {
+		unsafe {
+			#[allow(clippy::expect_used)]
+			let entry = (ptr::with_exposed_provenance_mut(mmap)
+				as *const MultibootMmapEntry)
+				.as_ref()
+				.expect("Failed to read memory map entry");
+
+			// The first entry should be taken special care of, since it has
+			// some information about the IVP and NULL Pointer convetion
+			if entry.addr == 0x0 {
+				segments[count] = MemorySegment::new(
+					entry.addr as usize,
+					entry.len as usize,
+					RegionType::Reserved,
+				);
+			} else {
+				segments[count] = MemorySegment::new(
+					entry.addr as usize,
+					entry.len as usize,
+					entry.entry_type,
+				);
+			}
+
+			/* let base_addr = entry.addr as usize;
+			let length = entry.len as usize;
+			let entry_type = entry.entry_type;
+
+			println_serial!(
+				"  Entry {}: Base=0x{:016x}, Length=0x{:016x} ({} bytes), Type={:?}",
+				count,
+				base_addr,
+				length,
+				length,
+				entry_type,
+			); */
+
+			count += 1;
+			mmap += (entry.size as usize) + mem::size_of::<u32>()
+		}
+	}
+
+	if count == 0 {
+		panic!("Could not find any memory regions in map (or map was empty)!");
+	}
 }

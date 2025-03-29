@@ -1,6 +1,7 @@
 use super::MemorySegment;
 use crate::sync::locked::Locked;
 use core::{
+	alloc::Layout,
 	cell::OnceCell,
 	fmt,
 	sync::atomic::{AtomicBool, Ordering},
@@ -20,7 +21,13 @@ pub static STACK: Mutex<OnceCell<KernelStack>> = Mutex::new(OnceCell::new());
 pub struct KernelStack {
 	bottom: usize,
 	size: usize,
-	used_size: usize,
+	current_pos: usize,
+}
+
+pub struct StackAllocation {
+	pub addr: *mut u8,
+	pub size: usize,
+	pub align: usize,
 }
 
 impl fmt::Debug for KernelStack {
@@ -47,12 +54,38 @@ impl KernelStack {
 		return Self {
 			bottom,
 			size: 16384,
-			used_size: 0,
+			current_pos: 0,
 		};
 	}
 
 	pub fn size(&self) -> usize {
 		return self.size;
+	}
+
+	pub unsafe fn allocate_from_stack(
+		&mut self,
+		layout: Layout,
+	) -> Result<StackAllocation, &str> {
+		use core::{ptr, slice};
+
+		let aligned_pos =
+			(self.current_pos + layout.align() - 1) & !(layout.align() - 1);
+		let new_used_size = aligned_pos + layout.size();
+
+		if new_used_size > self.size {
+			return Err("Warning: Requested size exceeds stack space");
+		}
+
+		self.current_pos = new_used_size;
+
+		let stack =
+			ptr::with_exposed_provenance_mut(self.bottom + self.current_pos);
+
+		return Ok(StackAllocation {
+			addr: stack,
+			size: layout.size(),
+			align: layout.align(),
+		});
 	}
 
 	pub unsafe fn create_usize_array(
@@ -64,15 +97,15 @@ impl KernelStack {
 		};
 
 		let new_used_size =
-			self.used_size + map_size * core::mem::size_of::<usize>();
+			self.current_pos + map_size * core::mem::size_of::<usize>();
 
 		if new_used_size > self.size {
 			return Err("Warning: Requested size exceeds stack space");
 		}
 
-		self.used_size = new_used_size;
+		self.current_pos = new_used_size;
 
-		let stack = with_exposed_provenance_mut(self.bottom + self.used_size);
+		let stack = with_exposed_provenance_mut(self.bottom + self.current_pos);
 
 		unsafe {
 			return Ok(from_raw_parts_mut(stack, map_size));
