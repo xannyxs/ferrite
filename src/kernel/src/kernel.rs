@@ -46,6 +46,8 @@
 
 /// Specific Bare Metal support
 pub mod arch;
+/// Collectiosn - Datatypes and structures
+pub mod collections;
 /// Device Support - Keyboard & Mouse
 pub mod device;
 /// Libc - STD Library (Should move in future)
@@ -56,22 +58,28 @@ pub mod macros;
 pub mod memory;
 /// Panic
 pub mod panic;
+/// Sync - Threadsafe structs
+pub mod sync;
 /// Tests
 pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-extern crate alloc;
-
+use crate::arch::x86::multiboot::G_SEGMENTS;
 use alloc::boxed::Box;
 use arch::x86::{
+	cpu::halt,
 	memory::get_page_directory,
-	multiboot::{MultibootInfo, MultibootMmapEntry},
+	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
 };
 use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
-use libc::console::{bin::idt::print_idt, console::Console};
+use kernel_sync::Mutex;
+use libc::console::console::Console;
+use memory::allocator::ALLOCATOR;
 use tty::serial::SERIAL;
+
+extern crate alloc;
 
 /* -------------------------------------- */
 
@@ -107,38 +115,22 @@ pub extern "C" fn kernel_main(
     );
 	}
 
+	let mut segments = G_SEGMENTS.lock();
+	get_memory_region(&mut segments, boot_info);
+	ALLOCATOR.lock().init(&mut segments);
+
+	let test = Box::new("Hallo wereld");
+	println_serial!("{}", test);
+	let another_test = Box::new("cool");
+	println_serial!("{}", test);
+	println_serial!("{}", another_test);
+
 	SERIAL.lock().init();
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 
 	#[cfg(test)]
 	test_main();
-
-	unsafe {
-		let entry = get_page_directory();
-		println_serial!("{:?}", entry);
-	}
-
-	let x = Box::new(42);
-
-	println_serial!("{x}");
-
-	for i in 0..5 {
-		#[allow(fuzzy_provenance_casts)]
-		let mmap = (boot_info.mmap_addr
-			+ core::mem::size_of::<MultibootMmapEntry>() as u32 * i)
-			as *const MultibootMmapEntry;
-
-		unsafe {
-			println_serial!("Section: {}", i);
-			let size = (*mmap).addr;
-			let addr = (*mmap).size;
-			let len = (*mmap).len;
-			println_serial!("Size: {}", size);
-			println_serial!("Addr: 0x{:x}", addr);
-			println_serial!("Len: {}", len);
-		}
-	}
 
 	loop {
 		let c = match keyboard.input() {

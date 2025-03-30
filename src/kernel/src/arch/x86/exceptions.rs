@@ -70,34 +70,42 @@ pub extern "x86-interrupt" fn divide_by_zero_handler(frame: InterruptFrame) {
 pub extern "x86-interrupt" fn debug_interrupt_handler(frame: InterruptFrame) {
 	println!("EXCEPTION: DEBUG EXCEPTION (#DB)");
 	println!("===============================");
+
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn non_maskable_interrupt_handler(
 	frame: InterruptFrame,
 ) {
 	println!("Non-maskable interrupt (NMI)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn breakpoint_handler(frame: InterruptFrame) {
 	println!("Breakpoint exception (#BP)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn overflow_handler(frame: InterruptFrame) {
 	println!("Overflow exception (#OF)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn bound_range_exceeded_handler(
 	frame: InterruptFrame,
 ) {
 	println!("BOUND range exceeded exception (#BR)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn invalid_opcode(frame: InterruptFrame) {
 	println!("Invalid opcode exception (#UD)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn device_not_available(frame: InterruptFrame) {
 	println!("Device not available exception (#NM)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn double_fault(
@@ -105,6 +113,7 @@ pub extern "x86-interrupt" fn double_fault(
 	error_code: u32,
 ) {
 	println!("Double fault exception (#DF)");
+	println_serial!("{:?}", frame);
 
 	reboot();
 }
@@ -113,6 +122,7 @@ pub extern "x86-interrupt" fn coprocessor_segment_overrun(
 	frame: InterruptFrame,
 ) {
 	println!("Coprocessor segment overrun");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn invalid_tss(
@@ -120,6 +130,7 @@ pub extern "x86-interrupt" fn invalid_tss(
 	error_code: u32,
 ) {
 	println!("Invalid TSS exception (#TS)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn segment_not_present(
@@ -127,6 +138,7 @@ pub extern "x86-interrupt" fn segment_not_present(
 	error_code: u32,
 ) {
 	println!("Segment not present exception (#NP)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn stack_segment_fault(
@@ -134,6 +146,7 @@ pub extern "x86-interrupt" fn stack_segment_fault(
 	error_code: u32,
 ) {
 	println!("Stack-segment fault (#SS)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn general_protection_fault(
@@ -166,6 +179,7 @@ pub extern "x86-interrupt" fn page_fault(
 
 pub extern "x86-interrupt" fn x87_floating_point(frame: InterruptFrame) {
 	println!("x87 floating-point exception (#MF)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn alignment_check(
@@ -173,18 +187,23 @@ pub extern "x86-interrupt" fn alignment_check(
 	error_code: u32,
 ) {
 	println!("Alignment check exception (#AC)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn machine_check(frame: InterruptFrame) {
 	println!("Machine check exception (#MC)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn simd_floating_point(frame: InterruptFrame) {
 	println!("SIMD floating-point exception (#XM)");
+
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn virtualization(frame: InterruptFrame) {
 	println!("Virtualization exception (#VE)");
+	println_serial!("{:?}", frame);
 }
 
 pub extern "x86-interrupt" fn security_exception(
@@ -192,4 +211,5 @@ pub extern "x86-interrupt" fn security_exception(
 	error_code: u32,
 ) {
 	println!("Security exception (#SX)");
+	println_serial!("{:?}", frame);
 }
