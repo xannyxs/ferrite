@@ -138,20 +138,21 @@ impl<T> LinkedList<T> {
 	pub unsafe fn push_front(&mut self, element: T) {
 		let new_node = Box::new(Node {
 			element,
-			next: None,
-			prev: self.tail,
+			next: self.head,
+			prev: None,
 		});
 
 		let node_ptr = NonNull::from(Box::leak(new_node));
 
 		match self.head {
 			Some(mut head_ptr) => unsafe {
-				head_ptr.as_mut().next = Some(node_ptr);
+				head_ptr.as_mut().prev = Some(node_ptr);
 			},
 			None => {
 				self.tail = Some(node_ptr);
 			}
 		}
+
 		self.head = Some(node_ptr);
 		self.length += 1;
 	}

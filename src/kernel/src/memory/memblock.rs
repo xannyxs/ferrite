@@ -194,6 +194,72 @@ impl MemBlockAllocator {
 		}
 
 		// TODO: Merge regions together if overlapping
+		self.coalesce_free_regions();
+	}
+
+	fn sort_regions(&mut self, region_type: RegionType) {
+		let (regions, count) = match region_type {
+			RegionType::Available => {
+				(&mut self.memory_region, self.memory_count)
+			}
+			RegionType::Reserved => {
+				(&mut self.reserved_region, self.reserved_count)
+			}
+			_ => (&mut self.memory_region, self.memory_count),
+		};
+
+		for i in 1..count {
+			let key = regions[i];
+			let mut j = i;
+
+			while j > 0 && regions[j - 1].base > key.base {
+				regions[j] = regions[j - 1];
+				j -= 1;
+			}
+
+			regions[j] = key;
+		}
+	}
+
+	fn coalesce_free_regions(&mut self) {
+		self.sort_regions(RegionType::Available);
+
+		let mut i = 0;
+
+		while i < self.memory_count - 1 {
+			let current = self.memory_region[i];
+			let next = self.memory_region[i + 1];
+
+			if current.base + current.size == next.base {
+				self.memory_region[i].size += next.size;
+				self.remove(RegionType::Available, i + 1);
+			} else {
+				i += 1;
+			}
+		}
+	}
+
+	fn remove(&mut self, region_type: RegionType, index: usize) {
+		match region_type {
+			RegionType::Available => {
+				for i in index..self.memory_count - 1 {
+					self.memory_region[i] = self.memory_region[i + 1];
+				}
+
+				self.memory_region[self.memory_count - 1] = MemRegion::empty();
+				self.memory_count -= 1;
+			}
+			RegionType::Reserved => {
+				for i in index..self.reserved_count - 1 {
+					self.reserved_region[i] = self.reserved_region[i + 1];
+				}
+
+				self.reserved_region[self.reserved_count - 1] =
+					MemRegion::empty();
+				self.reserved_count -= 1;
+			}
+			_ => {}
+		}
 	}
 
 	#[must_use]
@@ -218,16 +284,6 @@ impl MemBlockAllocator {
 		self.reserved_count += 1;
 
 		return true;
-	}
-
-	fn remove(&mut self, region: RegionType, i: usize) {
-		if region == RegionType::Available {
-			self.memory_region[i] = MemRegion::empty();
-			self.memory_count -= 1;
-		} else if region == RegionType::Reserved {
-			self.reserved_region[i] = MemRegion::empty();
-			self.reserved_count -= 1;
-		}
 	}
 
 	/// Finds a free memory region that satisfies the given size and alignment

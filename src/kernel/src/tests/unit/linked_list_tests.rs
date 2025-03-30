@@ -59,16 +59,16 @@ fn test_push_front() {
 	assert_eq!(*list.back().unwrap(), 10);
 
 	// Add second element
-	/* unsafe { list.push_front(20) };
+	unsafe { list.push_front(20) };
 	assert_eq!(list.len(), 2);
 	assert_eq!(*list.front().unwrap(), 20);
-	assert_eq!(*list.back().unwrap(), 10); */
+	assert_eq!(*list.back().unwrap(), 10);
 
 	// Add third element
-	/* unsafe { list.push_front(30) };
+	unsafe { list.push_front(30) };
 	assert_eq!(list.len(), 3);
 	assert_eq!(*list.front().unwrap(), 30);
-	assert_eq!(*list.back().unwrap(), 10); */
+	assert_eq!(*list.back().unwrap(), 10);
 }
 
 #[test_case]
