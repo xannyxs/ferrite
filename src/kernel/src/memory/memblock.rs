@@ -165,8 +165,35 @@ impl MemBlockAllocator {
 	///
 	/// # Panics
 	/// This function always panics if called
-	pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
-		panic!("dealloc should be never called for MemBlockAllocator");
+	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+		let addr = ptr as usize;
+		let size = layout.size().next_multiple_of(PAGE_SIZE);
+
+		let mut found = false;
+		let mut reserved_index = 0;
+
+		for (i, region) in self.reserved_region.iter().enumerate() {
+			if region.base == addr && region.size >= size {
+				reserved_index = i;
+				found = true;
+				break;
+			}
+		}
+
+		if !found {
+			panic!(
+				"Attempted to deallocate memory not managed by this allocator"
+			);
+		}
+
+		let reserved = self.reserved_region[reserved_index];
+		self.remove(RegionType::Reserved, reserved_index);
+
+		if !self.add(reserved.base, reserved.size) {
+			println!("Max Count in reserved_region array");
+		}
+
+		// TODO: Merge regions together if overlapping
 	}
 
 	#[must_use]
