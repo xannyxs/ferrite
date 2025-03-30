@@ -2,7 +2,7 @@ use super::{MemorySegment, PhysAddr, RegionType};
 use crate::{
 	arch::x86::multiboot::{get_memory_region, MultibootInfo},
 	memory::PAGE_SIZE,
-	println_serial,
+	println, println_serial,
 	sync::locked::Locked,
 };
 use core::{
@@ -116,10 +116,14 @@ impl MemBlockAllocator {
 	/// regions. This is typically called very early in the boot process.
 	pub fn init(&mut self, segments: &mut [MemorySegment; 16]) {
 		for segment in segments.iter() {
-			if segment.segment_type() == RegionType::Available {
-				self.add(segment.start_addr(), segment.size());
-			} else if segment.segment_type() == RegionType::Reserved {
-				self.reserved(segment.start_addr(), segment.size());
+			if segment.segment_type() == RegionType::Available
+				&& !self.add(segment.start_addr(), segment.size())
+			{
+				println!("Max Count in memory_region array");
+			} else if segment.segment_type() == RegionType::Reserved
+				&& !self.reserved(segment.start_addr(), segment.size())
+			{
+				println!("Max Count in reserved_region array");
 			}
 		}
 	}
@@ -165,6 +169,7 @@ impl MemBlockAllocator {
 		panic!("dealloc should be never called for MemBlockAllocator");
 	}
 
+	#[must_use]
 	fn add(&mut self, base: PhysAddr, size: usize) -> bool {
 		if self.memory_count >= MAX_REGION {
 			return false;
@@ -176,6 +181,7 @@ impl MemBlockAllocator {
 		return true;
 	}
 
+	#[must_use]
 	fn reserved(&mut self, base: PhysAddr, size: usize) -> bool {
 		if self.reserved_count >= MAX_REGION {
 			return false;
@@ -264,16 +270,20 @@ impl MemBlockAllocator {
 				(original_base + align_mask) & !align_mask
 			};
 
-			self.reserved(aligned_addr, alloc_size);
+			if !self.reserved(aligned_addr, alloc_size) {
+				println!("Max Count in reserved_region array");
+			}
 
 			let alignment_gap = aligned_addr - original_base;
-			if alignment_gap > 0 {
-				self.add(original_base, alignment_gap);
+			if alignment_gap > 0 && !self.add(original_base, alignment_gap) {
+				println!("Max Count in memory_region array");
 			}
 
 			let remaining_size = original_size - alignment_gap - alloc_size;
-			if remaining_size > 0 {
-				self.add(aligned_addr + alloc_size, remaining_size);
+			if remaining_size > 0
+				&& !self.add(aligned_addr + alloc_size, remaining_size)
+			{
+				println!("Max Count in memory_region array");
 			}
 
 			println_serial!(
