@@ -1,9 +1,8 @@
 use crate::{
 	memory::{MemorySegment, RegionType},
 	println_serial,
-	sync::locked::Locked,
+	sync::{locked::Locked, mutex::MutexGuard},
 };
-use kernel_sync::mutex::MutexGuard;
 use lazy_static::lazy_static;
 
 #[allow(missing_docs)]

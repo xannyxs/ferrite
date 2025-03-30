@@ -65,7 +65,7 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
-use crate::arch::x86::multiboot::G_SEGMENTS;
+use crate::{arch::x86::multiboot::G_SEGMENTS, sync::Mutex};
 use alloc::boxed::Box;
 use arch::x86::{
 	cpu::halt,
@@ -74,7 +74,6 @@ use arch::x86::{
 };
 use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
-use kernel_sync::Mutex;
 use libc::console::console::Console;
 use memory::allocator::ALLOCATOR;
 use tty::serial::SERIAL;

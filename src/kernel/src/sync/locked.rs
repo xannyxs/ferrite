@@ -1,4 +1,4 @@
-use kernel_sync::{mutex::MutexGuard, Mutex};
+use crate::sync::{mutex::MutexGuard, Mutex};
 
 /// A wrapper type that provides synchronized access to an inner value using a
 /// mutex. This type is particularly useful for creating thread-safe global

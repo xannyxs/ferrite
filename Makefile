@@ -7,18 +7,15 @@ CARGO_FLAGS ?=
 KERNEL_DIR = src/kernel
 
 all:
-	cargo build --manifest-path=src/sync/Cargo.toml $(CARGO_FLAGS)
 	cargo build --manifest-path=src/kernel/Cargo.toml $(CARGO_FLAGS)
 
 clean:
 	cargo clean --manifest-path=src/kernel/Cargo.toml
-	cargo clean --manifest-path=src/sync/Cargo.toml
 
 fclean:
 	rm -f $(ISO)
 	rm -rf $(KERNEL_DIR)/isodir
 	cargo clean --manifest-path=src/kernel/Cargo.toml
-	cargo clean --manifest-path=src/sync/Cargo.toml
 
 re: fclean all
 
