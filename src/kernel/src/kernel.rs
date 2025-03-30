@@ -54,11 +54,9 @@ pub mod device;
 pub mod libc;
 /// Macro directory
 pub mod macros;
-/// Memory allocation
 pub mod memory;
 /// Panic
 pub mod panic;
-/// Sync - Threadsafe structs
 pub mod sync;
 /// Tests
 pub mod tests;
@@ -69,7 +67,6 @@ use crate::{arch::x86::multiboot::G_SEGMENTS, sync::Mutex};
 use alloc::boxed::Box;
 use arch::x86::{
 	cpu::halt,
-	memory::get_page_directory,
 	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
 };
 use core::{arch::asm, ffi::c_void};

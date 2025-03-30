@@ -1,9 +1,11 @@
+//! Defines structures and functions related to parsing the Multiboot 1
+//! information structure provided by the bootloader.
+
 use crate::{
 	memory::{MemorySegment, RegionType},
 	println_serial,
-	sync::{locked::Locked, mutex::MutexGuard},
+	sync::{mutex::MutexGuard, Locked},
 };
-use lazy_static::lazy_static;
 
 #[allow(missing_docs)]
 #[cfg(target_arch = "x86")]
@@ -109,12 +111,33 @@ pub struct MultibootInfo {
 	apm_table: u32,
 }
 
-// TODO: Add Mutex
-lazy_static! {
-	pub static ref G_SEGMENTS: Locked<[MemorySegment; 16]> =
-		Locked::new([MemorySegment::empty(); 16]);
-}
+/// Global static storage for the parsed memory map segments.
+///
+/// Initialized once during boot by `get_memory_region`. Access should be
+/// synchronized via the `Locked` wrapper. Maximum of 16 segments stored.
+// Note: lazy_static might be needed if Locked::new isn't const, or use
+// OnceCell. Assuming Locked::new is const based on previous context.
+// lazy_static! { // Use lazy_static if Locked::new() is not const
+pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
+	Locked::new([MemorySegment::empty(); 16]);
 
+/// Parses the Multiboot memory map and populates the provided `segments` array.
+///
+/// Iterates through the memory map entries provided by the `boot_info`
+/// structure, converts them into `MemorySegment` representations, and stores
+/// them in the `segments` slice. It reserves the region starting at physical
+/// address 0x0.
+///
+/// # Arguments
+/// * `segments` - A mutable array slice to be filled with parsed
+///   `MemorySegment` data. Must have a size of at least 16
+///   (`MAX_MEMORY_SEGMENTS`).
+/// * `boot_info` - A reference to the `MultibootInfo` structure provided by the
+///   bootloader.
+///
+/// # Panics
+/// Panics if the bootloader information does not contain a valid memory map
+/// (`flags` bit 6 not set), or if no memory regions are found in the map.
 pub fn get_memory_region(
 	segments: &mut [MemorySegment; 16],
 	boot_info: &MultibootInfo,

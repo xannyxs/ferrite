@@ -1,17 +1,23 @@
+//! Kernel memory management core types and allocator modules.
+//!
+//! This module defines fundamental types for memory regions (`MemorySegment`,
+//! `RegionType`), physical addresses (`PhysAddr`), page constants
+//! (`PAGE_SIZE`), and organizes the different memory allocator implementations.
+
 extern crate alloc;
 
 /* -------------------------------------- */
 
 pub mod allocator;
-// pub mod buddy;
 pub mod memblock;
+// pub mod buddy;
 
 /* -------------------------------------- */
 
+/// Type alias for representing physical memory addresses.
 pub type PhysAddr = usize;
+/// Defines the system's page size (typically 4 KiB on x86_64).
 pub const PAGE_SIZE: usize = 4096;
-
-// pub static STACK = KernelStack::new();
 
 #[repr(u32)]
 #[allow(missing_docs)]
@@ -53,6 +59,9 @@ impl MemorySegment {
 		};
 	}
 
+	/// Creates an empty memory segment with zero base address, size, and
+	/// `Unknown` type. Useful for initializing arrays or representing
+	/// invalid/unused segments.
 	pub const fn empty() -> Self {
 		return Self {
 			start_addr: 0,

@@ -1,3 +1,10 @@
+//! An early physical memory allocator, similar in concept to Linux's memblock.
+//!
+//! Manages physical memory based on regions reported by the bootloader.
+//! It tracks available and reserved memory regions and provides basic
+//! allocation. Typically used during boot before the main page allocator is
+//! initialized.
+
 use super::{MemorySegment, PhysAddr, RegionType};
 use crate::{
 	arch::x86::multiboot::{get_memory_region, MultibootInfo},
@@ -192,7 +199,6 @@ impl MemBlockAllocator {
 			println!("Max Count in reserved_region array");
 		}
 
-		// TODO: Merge regions together if overlapping
 		self.coalesce_free_regions();
 	}
 
