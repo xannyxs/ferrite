@@ -3,14 +3,13 @@ use crate::{
 	arch::x86::multiboot::{get_memory_region, MultibootInfo},
 	memory::PAGE_SIZE,
 	println, println_serial,
-	sync::locked::Locked,
+	sync::{mutex::MutexGuard, Locked},
 };
 use core::{
 	alloc::{GlobalAlloc, Layout},
 	fmt::Debug,
 	ptr,
 };
-use kernel_sync::mutex::MutexGuard;
 
 const MAX_REGION: usize = 64;
 

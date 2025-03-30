@@ -1,8 +1,10 @@
 #![allow(missing_docs)]
 
-use crate::arch::x86::io::{inb, outb};
+use crate::{
+	arch::x86::io::{inb, outb},
+	sync::Mutex,
+};
 use core::fmt;
-use kernel_sync::Mutex;
 use lazy_static::lazy_static;
 
 /* -------------------------------------- */

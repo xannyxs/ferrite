@@ -12,9 +12,6 @@ path = "src/kernel.rs"
 name = "fungul"
 path = "src/bin.rs"
 
-[dependencies]
-kernel_sync = { path = "../sync/" }
-
 [dependencies.lazy_static]
 version = "1.5.0"
 features = ["spin_no_std"]

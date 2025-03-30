@@ -16,9 +16,9 @@ use crate::{
 		DescriptorTable,
 	},
 	println_serial,
+	sync::Mutex,
 };
 use core::arch::asm;
-use kernel_sync::Mutex;
 use lazy_static::lazy_static;
 
 #[doc(hidden)]
