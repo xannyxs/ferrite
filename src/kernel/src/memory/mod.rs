@@ -1,5 +1,3 @@
-use stack::KernelStack;
-
 extern crate alloc;
 
 /* -------------------------------------- */
@@ -7,7 +5,6 @@ extern crate alloc;
 pub mod allocator;
 // pub mod buddy;
 pub mod memblock;
-pub mod stack;
 
 /* -------------------------------------- */
 

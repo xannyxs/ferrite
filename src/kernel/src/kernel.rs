@@ -76,10 +76,7 @@ use core::{arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use kernel_sync::Mutex;
 use libc::console::console::Console;
-use memory::{
-	allocator::ALLOCATOR,
-	stack::{KernelStack, STACK},
-};
+use memory::allocator::ALLOCATOR;
 use tty::serial::SERIAL;
 
 extern crate alloc;
@@ -118,19 +115,15 @@ pub extern "C" fn kernel_main(
     );
 	}
 
-	unsafe {
-		match STACK.lock().set(KernelStack::new()) {
-			Ok(()) => {}
-			Err(_) => panic!("Stack was already initialized"),
-		}
-	}
-
 	let mut segments = G_SEGMENTS.lock();
 	get_memory_region(&mut segments, boot_info);
 	ALLOCATOR.lock().init(&mut segments);
 
-	let test = Box::new("Hello wereld");
+	let test = Box::new("Hallo wereld");
 	println_serial!("{}", test);
+	let another_test = Box::new("cool");
+	println_serial!("{}", test);
+	println_serial!("{}", another_test);
 
 	SERIAL.lock().init();
 	let mut keyboard = Keyboard::default();
