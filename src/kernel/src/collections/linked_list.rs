@@ -21,12 +21,6 @@ pub struct Node<T> {
 	pub element: T,
 }
 
-impl<T> Drop for LinkedList<T> {
-	fn drop(&mut self) {
-		self.clear();
-	}
-}
-
 /// A doubly-linked list implementation.
 ///
 /// This list maintains pointers to both the head and tail nodes, allowing
@@ -40,6 +34,13 @@ pub struct LinkedList<T> {
 	head: Option<NonNull<Node<T>>>,
 	tail: Option<NonNull<Node<T>>>,
 	length: usize,
+}
+
+impl<T> Drop for LinkedList<T> {
+	#[inline]
+	fn drop(&mut self) {
+		self.clear();
+	}
 }
 
 impl<T> LinkedList<T> {
