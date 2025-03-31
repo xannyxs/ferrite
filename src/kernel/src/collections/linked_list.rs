@@ -44,18 +44,23 @@ pub struct LinkedList<T> {
 
 impl<T> LinkedList<T> {
 	/// Returns true if the list contains no elements, false otherwise.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn is_empty(&self) -> bool {
-		self.length == 0
+		self.head.is_none()
 	}
 
 	/// Returns the number of elements currently in the list.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn len(&self) -> usize {
 		self.length
 	}
 
 	/// Removes all elements from the list, properly deallocating their memory.
+	#[inline]
 	pub fn clear(&mut self) {
 		while !self.is_empty() {
 			unsafe {
@@ -197,33 +202,37 @@ impl<T> LinkedList<T> {
 
 	/// Returns a reference to the first element in the list, or None if the
 	/// list is empty.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn front(&self) -> Option<&T> {
-		self.head
-			.map(|node_ptr| unsafe { &node_ptr.as_ref().element })
+		unsafe { self.head.as_ref().map(|node| &node.as_ref().element) }
 	}
 
 	/// Returns a mutable reference to the first element in the list, or None if
 	/// the list is empty.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn front_mut(&mut self) -> Option<&mut T> {
-		self.head
-			.map(|mut node_ptr| unsafe { &mut node_ptr.as_mut().element })
+		unsafe { self.head.as_mut().map(|node| &mut node.as_mut().element) }
 	}
 
 	/// Returns a reference to the last element in the list, or None if the list
 	/// is empty.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn back(&self) -> Option<&T> {
-		self.tail
-			.map(|node_ptr| unsafe { &node_ptr.as_ref().element })
+		unsafe { self.tail.as_ref().map(|node| &node.as_ref().element) }
 	}
 
 	/// Returns a mutable reference to the last element in the list, or None if
 	/// the list is empty.
+	#[inline]
+	#[must_use]
 	#[allow(clippy::implicit_return)]
 	pub fn back_mut(&mut self) -> Option<&mut T> {
-		self.tail
-			.map(|mut node_ptr| unsafe { &mut node_ptr.as_mut().element })
+		unsafe { self.tail.as_mut().map(|node| &mut node.as_mut().element) }
 	}
 }
