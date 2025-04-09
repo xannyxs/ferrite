@@ -29,7 +29,6 @@ pub struct Node<T> {
 ///
 /// The list tracks its length, which is updated whenever nodes are added or
 /// removed.
-#[derive(Default)]
 pub struct LinkedList<T> {
 	head: Option<NonNull<Node<T>>>,
 	tail: Option<NonNull<Node<T>>>,
@@ -43,7 +42,26 @@ impl<T> Drop for LinkedList<T> {
 	}
 }
 
+impl<T> Default for LinkedList<T> {
+	/// Creates an empty `LinkedList<T>`.
+	#[inline]
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl<T> LinkedList<T> {
+	/// Creates an empty `LinkedList`.
+	#[inline]
+	#[must_use]
+	pub const fn new() -> Self {
+		LinkedList {
+			head: None,
+			tail: None,
+			length: 0,
+		}
+	}
+
 	/// Returns true if the list contains no elements, false otherwise.
 	#[inline]
 	#[must_use]
