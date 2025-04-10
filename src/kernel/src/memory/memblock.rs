@@ -122,14 +122,15 @@ impl MemBlockAllocator {
 	/// regions. This is typically called very early in the boot process.
 	pub fn init(&mut self, segments: &mut [MemorySegment; 16]) {
 		for segment in segments.iter() {
-			if segment.segment_type() == RegionType::Available
-				&& !self.add(segment.start_addr(), segment.size())
-			{
-				println!("Max Count in memory_region array");
-			} else if segment.segment_type() == RegionType::Reserved
-				&& !self.reserved(segment.start_addr(), segment.size())
-			{
-				println!("Max Count in reserved_region array");
+			// TODO: Might add other RegionTypes
+			#[allow(clippy::single_match)]
+			match segment.segment_type() {
+				RegionType::Available => {
+					if !self.add(segment.start_addr(), segment.size()) {
+						panic!("memblock: MAX_COUNT is full in memory segment");
+					}
+				}
+				_ => {}
 			}
 		}
 	}

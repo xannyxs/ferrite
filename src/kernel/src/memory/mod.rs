@@ -9,8 +9,9 @@ extern crate alloc;
 /* -------------------------------------- */
 
 pub mod allocator;
+pub mod buddy;
 pub mod memblock;
-// pub mod buddy;
+pub mod slab;
 
 /* -------------------------------------- */
 
