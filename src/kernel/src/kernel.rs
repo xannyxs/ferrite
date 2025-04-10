@@ -17,6 +17,7 @@
 // Safety and Documentation
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
 #![feature(abi_x86_interrupt)]
+#![feature(linked_list_cursors)]
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
 #![warn(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
@@ -47,7 +48,7 @@
 /// Specific Bare Metal support
 pub mod arch;
 /// Collectiosn - Datatypes and structures
-pub mod collections;
+// pub mod collections;
 /// Device Support - Keyboard & Mouse
 pub mod device;
 /// Libc - STD Library (Should move in future)
@@ -64,16 +65,24 @@ pub mod tests;
 pub mod tty;
 
 use crate::{arch::x86::multiboot::G_SEGMENTS, sync::Mutex};
-use alloc::boxed::Box;
+use alloc::{boxed::Box, format};
 use arch::x86::{
 	cpu::halt,
 	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
 };
-use core::{arch::asm, ffi::c_void};
+use core::{alloc::Layout, arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
-use memory::allocator::ALLOCATOR;
-use tty::serial::SERIAL;
+use memory::{
+	allocator::{BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR},
+	buddy::BuddyAllocator,
+	memblock::MemBlockAllocator,
+	PAGE_SIZE,
+};
+use tty::{
+	log::{Logger, StatusProgram},
+	serial::SERIAL,
+};
 
 extern crate alloc;
 
@@ -95,6 +104,10 @@ pub extern "C" fn kernel_main(
 	magic_number: u32,
 	boot_info: &'static MultibootInfo,
 ) -> ! {
+	Logger::init("Kernel", Some("Starting initialization"));
+	Logger::divider();
+	Logger::newline();
+
 	if magic_number != MAGIC_VALUE {
 		panic!(
 			"Incorrect magic number. Current magic number: 0x{:x}",
@@ -111,17 +124,88 @@ pub extern "C" fn kernel_main(
     );
 	}
 
+	Logger::init(
+		"Memory Management",
+		Some("Starting memory subsystem initialization"),
+	);
+
+	Logger::init_step(
+		"Memory Detection",
+		"Reading memory map from bootloader",
+		true,
+	);
+	SERIAL.lock().init();
+
 	let mut segments = G_SEGMENTS.lock();
 	get_memory_region(&mut segments, boot_info);
-	ALLOCATOR.lock().init(&mut segments);
 
-	let test = Box::new("Hallo wereld");
+	Logger::init_step(
+		"Memblock Allocator",
+		"Initializing early memory allocator",
+		true,
+	);
+
+	{
+		// To avoid deadlocks, we will need to use a temporary block
+		let mut memblock = EARLY_PHYSICAL_ALLOCATOR.lock();
+		memblock.get_or_init(MemBlockAllocator::new);
+		match memblock.get_mut() {
+    Some(alloc) => {
+        alloc.init(&mut segments);
+        Logger::ok("Memblock Allocator", Some("Initialization successful"));
+    },
+    None => panic!(
+        "Failed to initialize memory block allocator: unable to retrieve mutable reference. \
+        This could indicate that the allocator was not properly initialized or was dropped unexpectedly. \
+        Check EARLY_PHYSICAL_ALLOCATOR implementation."
+    ),
+};
+	}
+
+	Logger::init_step(
+		"Buddy Allocator",
+		"Initializing buddy page allocator",
+		true,
+	);
+
+	{
+		let mut buddy_allocator = BUDDY_PAGE_ALLOCATOR.lock();
+
+		#[allow(clippy::implicit_return)]
+		buddy_allocator.get_or_init(|| BuddyAllocator::new(&segments));
+		match buddy_allocator.get_mut() {
+			Some(_) => {
+				Logger::ok("Buddy Allocator", Some("Initialized successfully"));
+			}
+			None => panic!("Was not able to initialize the Buddy Allocator"),
+		}
+	}
+
+	{
+		let mut buddy_allocator = BUDDY_PAGE_ALLOCATOR.lock();
+
+		match buddy_allocator.get_mut() {
+			Some(a) => unsafe {
+				let layout = Layout::from_size_align(PAGE_SIZE * 2, PAGE_SIZE)
+					.expect("Error while creating the Buddy Allocation Layout");
+
+				println_serial!("ALLOCATING");
+				a.alloc(layout);
+				println_serial!("DONE");
+			},
+			None => panic!("Was not able to initialize the Buddy Allocator"),
+		}
+	}
+
+	Logger::divider();
+	Logger::status("Memory Management", &StatusProgram::OK);
+
+	/* let test = Box::new("Hallo wereld");
 	println_serial!("{}", test);
 	let another_test = Box::new("cool");
 	println_serial!("{}", test);
-	println_serial!("{}", another_test);
+	println_serial!("{}", another_test); */
 
-	SERIAL.lock().init();
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 
