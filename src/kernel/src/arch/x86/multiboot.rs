@@ -156,23 +156,19 @@ pub fn get_memory_region(
 				.as_ref()
 				.expect("Failed to read memory map entry");
 
-			// The first entry should be taken special care of, since it has
-			// some information about the IVP and NULL Pointer convetion
-			if entry.addr == 0x0 {
-				segments[count] = MemorySegment::new(
-					entry.addr as usize,
-					entry.len as usize,
-					RegionType::Reserved,
-				);
-			} else {
-				segments[count] = MemorySegment::new(
-					entry.addr as usize,
-					entry.len as usize,
-					entry.entry_type,
-				);
+			let entry_type = entry.entry_type;
+			if entry_type != RegionType::Available || entry.addr == 0x0 {
+				mmap += (entry.size as usize) + mem::size_of::<u32>();
+				continue;
 			}
 
-			/* let base_addr = entry.addr as usize;
+			segments[count] = MemorySegment::new(
+				entry.addr as usize,
+				entry.len as usize,
+				entry.entry_type,
+			);
+
+			let base_addr = entry.addr as usize;
 			let length = entry.len as usize;
 			let entry_type = entry.entry_type;
 
@@ -183,10 +179,10 @@ pub fn get_memory_region(
 				length,
 				length,
 				entry_type,
-			); */
+			);
 
 			count += 1;
-			mmap += (entry.size as usize) + mem::size_of::<u32>()
+			mmap += (entry.size as usize) + mem::size_of::<u32>();
 		}
 	}
 
