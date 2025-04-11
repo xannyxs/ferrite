@@ -12,6 +12,7 @@ pub mod allocator;
 pub mod buddy;
 pub mod memblock;
 pub mod slab;
+pub mod transition;
 
 /* -------------------------------------- */
 

@@ -48,7 +48,7 @@
 /// Specific Bare Metal support
 pub mod arch;
 /// Collectiosn - Datatypes and structures
-// pub mod collections;
+pub mod collections;
 /// Device Support - Keyboard & Mouse
 pub mod device;
 /// Libc - STD Library (Should move in future)
