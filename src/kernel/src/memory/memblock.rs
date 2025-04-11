@@ -7,7 +7,7 @@
 
 use super::{MemorySegment, PhysAddr, RegionType};
 use crate::{
-	arch::x86::multiboot::{get_memory_region, MultibootInfo},
+	arch::x86::multiboot::{get_memory_region, MultibootInfo, G_SEGMENTS},
 	memory::PAGE_SIZE,
 	println, println_serial,
 	sync::{mutex::MutexGuard, Locked},
@@ -120,7 +120,9 @@ impl MemBlockAllocator {
 	///
 	/// Initializes the allocator with zero available and zero reserved memory
 	/// regions. This is typically called very early in the boot process.
-	pub fn init(&mut self, segments: &mut [MemorySegment; 16]) {
+	pub fn init(&mut self) {
+		let segments = G_SEGMENTS.lock();
+
 		for segment in segments.iter() {
 			// TODO: Might add other RegionTypes
 			#[allow(clippy::single_match)]
@@ -201,6 +203,8 @@ impl MemBlockAllocator {
 		}
 
 		self.coalesce_free_regions();
+
+		println_serial!("Dealloc has been called in memblock()");
 	}
 
 	fn sort_regions(&mut self, region_type: RegionType) {

@@ -138,12 +138,10 @@ pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
 /// # Panics
 /// Panics if the bootloader information does not contain a valid memory map
 /// (`flags` bit 6 not set), or if no memory regions are found in the map.
-pub fn get_memory_region(
-	segments: &mut [MemorySegment; 16],
-	boot_info: &MultibootInfo,
-) {
+pub fn get_memory_region(boot_info: &MultibootInfo) {
 	use core::{mem, ptr};
 
+	let mut segments = G_SEGMENTS.lock();
 	let mut count = 0;
 	let mut mmap = boot_info.mmap_addr as usize;
 	let mmap_end = (boot_info.mmap_addr + boot_info.mmap_length) as usize;

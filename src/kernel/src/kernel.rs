@@ -136,8 +136,7 @@ pub extern "C" fn kernel_main(
 	);
 	SERIAL.lock().init();
 
-	let mut segments = G_SEGMENTS.lock();
-	get_memory_region(&mut segments, boot_info);
+	get_memory_region(boot_info);
 
 	Logger::init_step(
 		"Memblock Allocator",
@@ -146,12 +145,11 @@ pub extern "C" fn kernel_main(
 	);
 
 	{
-		// To avoid deadlocks, we will need to use a temporary block
 		let mut memblock = EARLY_PHYSICAL_ALLOCATOR.lock();
 		memblock.get_or_init(MemBlockAllocator::new);
 		match memblock.get_mut() {
     Some(alloc) => {
-        alloc.init(&mut segments);
+        alloc.init();
         Logger::ok("Memblock Allocator", Some("Initialization successful"));
     },
     None => panic!(
@@ -172,17 +170,13 @@ pub extern "C" fn kernel_main(
 		let mut buddy_allocator = BUDDY_PAGE_ALLOCATOR.lock();
 
 		#[allow(clippy::implicit_return)]
-		buddy_allocator.get_or_init(|| BuddyAllocator::new(&segments));
+		buddy_allocator.get_or_init(|| BuddyAllocator::new());
 		match buddy_allocator.get_mut() {
 			Some(_) => {
 				Logger::ok("Buddy Allocator", Some("Initialized successfully"));
 			}
 			None => panic!("Was not able to initialize the Buddy Allocator"),
 		}
-	}
-
-	{
-		let mut buddy_allocator = BUDDY_PAGE_ALLOCATOR.lock();
 
 		match buddy_allocator.get_mut() {
 			Some(a) => unsafe {

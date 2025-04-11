@@ -2,7 +2,7 @@ use super::{
 	allocator::EARLY_PHYSICAL_ALLOCATOR, memblock::MemRegion, MemorySegment,
 	PhysAddr, PAGE_SIZE,
 };
-use crate::{println_serial, sync::Locked};
+use crate::{arch::x86::multiboot::G_SEGMENTS, println_serial, sync::Locked};
 use alloc::collections::linked_list::LinkedList;
 use core::{alloc::Layout, error::Error, ptr};
 
@@ -22,8 +22,11 @@ unsafe impl Sync for BuddyAllocator {}
 
 impl BuddyAllocator {
 	/// Creates a new BuddyAllocator.
-	pub fn new(memory_segments: &[MemorySegment; 16]) -> Self {
+	#[allow(clippy::new_without_default)]
+	pub fn new() -> Self {
 		use core::mem::{align_of, size_of};
+
+		let memory_segments = G_SEGMENTS.lock();
 
 		let mut size = 0;
 		for segment in memory_segments.iter() {
