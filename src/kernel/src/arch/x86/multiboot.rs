@@ -144,7 +144,9 @@ pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
 pub fn get_memory_region(boot_info: &MultibootInfo) {
 	use core::{mem, ptr};
 
-	let mut segments = G_SEGMENTS.lock();
+	println_serial!("Virtual: 0x{:x}", get_kernel_virtual_end());
+	println_serial!("Phys: 0x{:x}", get_kernel_physical_end());
+
 	let mut count = 0;
 	let mut mmap = boot_info.mmap_addr as usize;
 	let mmap_end = (boot_info.mmap_addr + boot_info.mmap_length) as usize;
@@ -163,7 +165,7 @@ pub fn get_memory_region(boot_info: &MultibootInfo) {
 				continue;
 			}
 
-			segments[count] = MemorySegment::new(
+			G_SEGMENTS.lock()[count] = MemorySegment::new(
 				entry.addr as usize,
 				entry.len as usize,
 				entry.entry_type,
@@ -213,4 +215,23 @@ pub fn get_biggest_available_segment_index() -> Option<usize> {
 	}
 
 	return biggest_index;
+}
+
+extern "C" {
+	static _kernel_virtual_end: u8;
+	static _kernel_physical_end: u8;
+}
+
+/// Function to get the physical end address of the kernel image.
+pub fn get_kernel_physical_end() -> usize {
+	unsafe {
+		return &_kernel_physical_end as *const u8 as usize;
+	}
+}
+
+/// Function to get the virtual end address of the kernel image.
+pub fn get_kernel_virtual_end() -> usize {
+	unsafe {
+		return &_kernel_virtual_end as *const u8 as usize;
+	}
 }
