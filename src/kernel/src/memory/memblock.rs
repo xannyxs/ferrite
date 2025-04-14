@@ -65,9 +65,15 @@ impl MemRegion {
 			size: 0x0,
 		};
 	}
+
+	/// Returns size of region
+	pub const fn size(&self) -> usize {
+		return self.size;
+	}
 }
 
 /// `memblock` allocator metadata
+#[derive(Debug)]
 pub struct MemBlockAllocator {
 	memory_region: [MemRegion; MAX_REGION],
 	reserved_region: [MemRegion; MAX_REGION],
@@ -135,6 +141,26 @@ impl MemBlockAllocator {
 				_ => {}
 			}
 		}
+	}
+
+	/// Returns a reference of the current length of `mem_region`
+	pub const fn mem_count(&self) -> usize {
+		return self.memory_count;
+	}
+
+	/// Returns a reference to the current `memregion`
+	pub const fn mem_region(&self) -> &[MemRegion; MAX_REGION] {
+		return &self.memory_region;
+	}
+
+	/// Returns a reference of the current length of `reserved_region`
+	pub const fn reserved_count(&self) -> usize {
+		return self.reserved_count;
+	}
+
+	/// Returns a reference to the current `reserved_region`
+	pub const fn reserved_region(&self) -> &[MemRegion; MAX_REGION] {
+		return &self.reserved_region;
 	}
 
 	/// Allocates memory with the specified layout requirements.

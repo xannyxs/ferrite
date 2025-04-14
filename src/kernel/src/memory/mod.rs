@@ -11,8 +11,11 @@ extern crate alloc;
 pub mod allocator;
 pub mod buddy;
 pub mod memblock;
+pub mod node_pool;
 pub mod slab;
 pub mod transition;
+
+pub use node_pool::NodePoolAllocator;
 
 /* -------------------------------------- */
 

@@ -138,6 +138,9 @@ pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
 /// # Panics
 /// Panics if the bootloader information does not contain a valid memory map
 /// (`flags` bit 6 not set), or if no memory regions are found in the map.
+///
+/// NOTE: Function currently only returns everything after 1MB. Might change
+/// this in the future.
 pub fn get_memory_region(boot_info: &MultibootInfo) {
 	use core::{mem, ptr};
 
@@ -187,4 +190,27 @@ pub fn get_memory_region(boot_info: &MultibootInfo) {
 	if count == 0 {
 		panic!("Could not find any memory regions in map (or map was empty)!");
 	}
+}
+
+pub fn get_biggest_available_segment_index() -> Option<usize> {
+	let segments_guard = G_SEGMENTS.lock();
+	let segments = &*segments_guard;
+
+	let mut biggest_index: Option<usize> = None;
+	let mut current_max_size: usize = 0;
+
+	for (index, segment) in segments.iter().enumerate() {
+		if segment.segment_type() != RegionType::Available
+			|| segment.start_addr() == 0x0
+		{
+			continue;
+		}
+
+		if biggest_index.is_none() || segment.size() > current_max_size {
+			current_max_size = segment.size();
+			biggest_index = Some(index);
+		}
+	}
+
+	return biggest_index;
 }

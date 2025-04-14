@@ -17,7 +17,9 @@
 // Safety and Documentation
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
 #![feature(abi_x86_interrupt)]
+#![feature(dropck_eyepatch)]
 #![feature(linked_list_cursors)]
+#![feature(allocator_api)]
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
 #![warn(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
@@ -68,16 +70,22 @@ use crate::{arch::x86::multiboot::G_SEGMENTS, sync::Mutex};
 use alloc::{boxed::Box, format};
 use arch::x86::{
 	cpu::halt,
-	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
+	multiboot::{
+		get_biggest_available_segment_index, get_memory_region, MultibootInfo,
+		MultibootMmapEntry,
+	},
 };
+use collections::linked_list::Node;
 use core::{alloc::Layout, arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
 use memory::{
-	allocator::{BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR},
+	allocator::{
+		BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR, NODE_POOL_ALLOCATOR,
+	},
 	buddy::BuddyAllocator,
-	memblock::MemBlockAllocator,
-	PAGE_SIZE,
+	memblock::{self, MemBlockAllocator},
+	node_pool, NodePoolAllocator, PAGE_SIZE,
 };
 use tty::{
 	log::{Logger, StatusProgram},
@@ -158,6 +166,56 @@ pub extern "C" fn kernel_main(
         Check EARLY_PHYSICAL_ALLOCATOR implementation."
     ),
 };
+	}
+
+	Logger::init_step(
+		"Node Pool Allocator",
+		"Initializing Node Pool allocator",
+		true,
+	);
+
+	{
+		let index =
+			get_biggest_available_segment_index().expect("No region available");
+
+		let needed_nodes = G_SEGMENTS.lock()[index].size() / PAGE_SIZE;
+
+		println_serial!("{}", G_SEGMENTS.lock()[index].size());
+
+		let pool_layout = Layout::from_size_align(
+			needed_nodes * size_of::<Node<usize>>(),
+			align_of::<Node<usize>>(),
+		)
+		.expect("Error while creating a layout");
+
+		let ptr = {
+			let mut memblock_guard = EARLY_PHYSICAL_ALLOCATOR.lock();
+			let allocator =
+				memblock_guard.get_mut().expect("MemBlock not available");
+			unsafe { allocator.alloc(pool_layout) }
+		};
+
+		if ptr.is_null() {
+			panic!("Failed to allocate node pool from MemBlock");
+		}
+		let pool_base_addr = ptr as usize;
+
+		let node_pool_guard = NODE_POOL_ALLOCATOR.lock();
+
+		node_pool_guard.get_or_init(|| {
+			println_serial!(
+				"Initializing NodePoolAllocator at {:#x}",
+				pool_base_addr
+			);
+
+			return NodePoolAllocator::new(pool_base_addr, needed_nodes);
+		});
+
+		if node_pool_guard.get().is_none() {
+			panic!("NodePoolAllocator failed to initialize.");
+		}
+
+		println_serial!("NodePoolAllocator initialized successfully.");
 	}
 
 	Logger::init_step(

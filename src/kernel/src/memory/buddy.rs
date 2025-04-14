@@ -1,10 +1,12 @@
 use super::{
-	allocator::EARLY_PHYSICAL_ALLOCATOR, memblock::MemRegion, MemorySegment,
-	PhysAddr, PAGE_SIZE,
+	allocator::EARLY_PHYSICAL_ALLOCATOR, memblock::MemRegion,
+	node_pool::NodeAllocatorWrapper, MemorySegment, PhysAddr, PAGE_SIZE,
 };
-use crate::{arch::x86::multiboot::G_SEGMENTS, println_serial, sync::Locked};
-use alloc::collections::linked_list::LinkedList;
-use core::{alloc::Layout, error::Error, ptr};
+use crate::{
+	arch::x86::multiboot::G_SEGMENTS, collections::linked_list::LinkedList,
+	memory::NodePoolAllocator, println_serial, sync::Locked,
+};
+use core::{alloc::Layout, ptr};
 
 const MAX_ORDERS: usize = 32;
 
@@ -13,7 +15,7 @@ pub struct BuddyAllocator {
 	size: usize,
 	min_block_size: usize,
 	max_order: usize,
-	free_lists: [LinkedList<usize>; MAX_ORDERS],
+	free_lists: [LinkedList<usize, NodeAllocatorWrapper>; MAX_ORDERS],
 	map: &'static mut [usize],
 }
 
@@ -77,7 +79,8 @@ impl BuddyAllocator {
 		}
 
 		let base_addr = memory_segments[0].start_addr();
-		const EMPTY_LIST: LinkedList<usize> = LinkedList::new();
+		const EMPTY_LIST: LinkedList<usize, NodeAllocatorWrapper> =
+			LinkedList::new_in(NodeAllocatorWrapper);
 		let mut free_lists = [EMPTY_LIST; MAX_ORDERS];
 
 		if blocks_count > 0 {

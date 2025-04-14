@@ -2,6 +2,7 @@
 
 use super::{
 	buddy::BuddyAllocator, memblock::MemBlockAllocator, slab::SlabAllocator,
+	NodePoolAllocator,
 };
 use crate::{memory::allocator, sync::Locked};
 use core::{
@@ -14,6 +15,12 @@ use core::{
 //    attribute here!
 #[allow(missing_docs)]
 pub static EARLY_PHYSICAL_ALLOCATOR: Locked<OnceCell<MemBlockAllocator>> =
+	Locked::new(OnceCell::new());
+
+// 2. Define another static which is in charge to reserve space for the Buddy
+//    Allocator meant for the `free_list`.
+#[allow(missing_docs)]
+pub static NODE_POOL_ALLOCATOR: Locked<OnceCell<NodePoolAllocator>> =
 	Locked::new(OnceCell::new());
 
 // 2. Define statics for the LATER allocators (Buddy + Slab) These need

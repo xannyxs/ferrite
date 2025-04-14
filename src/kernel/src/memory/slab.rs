@@ -1,5 +1,4 @@
-use crate::sync::Locked;
-use alloc::collections::linked_list::LinkedList;
+use crate::{collections::linked_list::LinkedList, sync::Locked};
 use core::{
 	alloc::{GlobalAlloc, Layout},
 	ptr::NonNull,
