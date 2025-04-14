@@ -66,6 +66,11 @@ impl MemRegion {
 		};
 	}
 
+	/// Returns the base of region
+	pub const fn base(&self) -> usize {
+		return self.base;
+	}
+
 	/// Returns size of region
 	pub const fn size(&self) -> usize {
 		return self.size;

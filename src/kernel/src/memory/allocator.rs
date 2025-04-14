@@ -40,8 +40,7 @@ static GLOBAL_ALLOCATOR: Locked<KernelAllocator> = Locked::new(KernelAllocator);
 
 unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		// let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
-		let mut allocator = EARLY_PHYSICAL_ALLOCATOR.lock();
+		let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
 
 		match allocator.get_mut() {
 			Some(allocator) => unsafe { allocator.alloc(layout) },
@@ -50,8 +49,7 @@ unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 	}
 
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		let mut allocator = EARLY_PHYSICAL_ALLOCATOR.lock();
-		// let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
+		let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
 
 		match allocator.get_mut() {
 			Some(allocator) => unsafe { allocator.dealloc(ptr, layout) },

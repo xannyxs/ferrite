@@ -24,16 +24,15 @@ unsafe impl Sync for BuddyAllocator {}
 
 impl BuddyAllocator {
 	/// Creates a new BuddyAllocator.
-	#[allow(clippy::new_without_default)]
-	pub fn new() -> Self {
+	pub fn new(base: usize) -> Self {
 		use core::mem::{align_of, size_of};
 
-		let memory_segments = G_SEGMENTS.lock();
-
 		let mut size = 0;
-		for segment in memory_segments.iter() {
+		for segment in G_SEGMENTS.lock().iter() {
 			size += segment.size();
 		}
+
+		size -= base;
 
 		let min_block_size = PAGE_SIZE;
 		let blocks_count = size / min_block_size;
@@ -78,17 +77,16 @@ impl BuddyAllocator {
 			*word = 0;
 		}
 
-		let base_addr = memory_segments[0].start_addr();
 		const EMPTY_LIST: LinkedList<usize, NodeAllocatorWrapper> =
 			LinkedList::new_in(NodeAllocatorWrapper);
 		let mut free_lists = [EMPTY_LIST; MAX_ORDERS];
 
 		if blocks_count > 0 {
-			free_lists[max_order].push_back(base_addr);
+			free_lists[max_order].push_back(base);
 		}
 
 		return Self {
-			base: memory_segments[0].start_addr(),
+			base,
 			size,
 			min_block_size,
 			max_order,

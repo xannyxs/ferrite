@@ -79,6 +79,7 @@ use collections::linked_list::Node;
 use core::{alloc::Layout, arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
+use macros::print;
 use memory::{
 	allocator::{
 		BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR, NODE_POOL_ALLOCATOR,
@@ -198,8 +199,8 @@ pub extern "C" fn kernel_main(
 		if ptr.is_null() {
 			panic!("Failed to allocate node pool from MemBlock");
 		}
-		let pool_base_addr = ptr as usize;
 
+		let pool_base_addr = ptr as usize;
 		let node_pool_guard = NODE_POOL_ALLOCATOR.lock();
 
 		node_pool_guard.get_or_init(|| {
@@ -225,27 +226,35 @@ pub extern "C" fn kernel_main(
 	);
 
 	{
-		let mut buddy_allocator = BUDDY_PAGE_ALLOCATOR.lock();
+		let mut base = 0;
+		{
+			let guard = EARLY_PHYSICAL_ALLOCATOR.lock();
+			let memblock = guard.get().unwrap();
+
+			let regions = memblock.mem_region();
+			if regions.is_empty() {
+				panic!("Not enough memory space");
+			}
+
+			for region in regions.iter() {
+				if !region.is_empty() {
+					base = region.base();
+					break;
+				}
+			}
+		};
 
 		#[allow(clippy::implicit_return)]
-		buddy_allocator.get_or_init(|| BuddyAllocator::new());
-		match buddy_allocator.get_mut() {
-			Some(_) => {
-				Logger::ok("Buddy Allocator", Some("Initialized successfully"));
-			}
-			None => panic!("Was not able to initialize the Buddy Allocator"),
-		}
+		BUDDY_PAGE_ALLOCATOR
+			.lock()
+			.get_or_init(|| BuddyAllocator::new(base));
+	}
 
-		match buddy_allocator.get_mut() {
-			Some(a) => unsafe {
-				let layout = Layout::from_size_align(PAGE_SIZE * 2, PAGE_SIZE)
-					.expect("Error while creating the Buddy Allocation Layout");
+	{
+		EARLY_PHYSICAL_ALLOCATOR.lock().take();
 
-				println_serial!("ALLOCATING");
-				a.alloc(layout);
-				println_serial!("DONE");
-			},
-			None => panic!("Was not able to initialize the Buddy Allocator"),
+		if EARLY_PHYSICAL_ALLOCATOR.lock().get().is_some() {
+			panic!("EARLY_PHYSICAL_ALLOCATOR (memblock) has not been decommissioned.");
 		}
 	}
 
