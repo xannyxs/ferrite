@@ -2,7 +2,7 @@
 //! information structure provided by the bootloader.
 
 use crate::{
-	memory::{MemorySegment, RegionType},
+	memory::{MemorySegment, RegionType, PAGE_SIZE},
 	println_serial,
 	sync::{mutex::MutexGuard, Locked},
 };
@@ -138,14 +138,13 @@ pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
 /// # Panics
 /// Panics if the bootloader information does not contain a valid memory map
 /// (`flags` bit 6 not set), or if no memory regions are found in the map.
-///
-/// NOTE: Function currently only returns everything after 1MB. Might change
-/// this in the future.
+#[allow(clippy::expect_used)]
 pub fn get_memory_region(boot_info: &MultibootInfo) {
 	use core::{mem, ptr};
 
-	println_serial!("Virtual: 0x{:x}", get_kernel_virtual_end());
-	println_serial!("Phys: 0x{:x}", get_kernel_physical_end());
+	if (boot_info.flags & (1 << 6)) == 0 {
+		panic!("CRITICAL: Bootloader did not provide a memory map!");
+	}
 
 	let mut count = 0;
 	let mut mmap = boot_info.mmap_addr as usize;
@@ -153,30 +152,35 @@ pub fn get_memory_region(boot_info: &MultibootInfo) {
 
 	while mmap < mmap_end {
 		unsafe {
-			#[allow(clippy::expect_used)]
 			let entry = (ptr::with_exposed_provenance_mut(mmap)
 				as *const MultibootMmapEntry)
 				.as_ref()
 				.expect("Failed to read memory map entry");
 
-			let entry_type = entry.entry_type;
-			if entry_type != RegionType::Available || entry.addr == 0x0 {
+			// Ignore everything under 1Mb
+			if entry.addr < 0x100000 {
 				mmap += (entry.size as usize) + mem::size_of::<u32>();
 				continue;
 			}
 
-			G_SEGMENTS.lock()[count] = MemorySegment::new(
-				entry.addr as usize,
-				entry.len as usize,
-				entry.entry_type,
-			);
+			let phys_addr = get_kernel_physical_end();
+			let mut addr = entry.addr as usize;
+			let mut len = entry.len as usize;
+
+			if addr < phys_addr {
+				addr = phys_addr + PAGE_SIZE;
+				len = (entry.addr + entry.len) as usize - addr;
+			}
+
+			G_SEGMENTS.lock()[count] =
+				MemorySegment::new(addr, len, entry.entry_type);
 
 			let base_addr = entry.addr as usize;
 			let length = entry.len as usize;
 			let entry_type = entry.entry_type;
 
 			println_serial!(
-				"  Entry {}: Base=0x{:016x}, Length=0x{:016x} ({} bytes), Type={:?}",
+				"  Entry {}: Base=0x{:08x}, Length=0x{:08x} ({} bytes), Type={:?}",
 				count,
 				base_addr,
 				length,
@@ -216,6 +220,8 @@ pub fn get_biggest_available_segment_index() -> Option<usize> {
 
 	return biggest_index;
 }
+
+/* -------------------------------------- */
 
 extern "C" {
 	static _kernel_virtual_end: u8;
