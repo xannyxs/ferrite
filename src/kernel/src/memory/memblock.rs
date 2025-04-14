@@ -84,24 +84,6 @@ pub struct MemBlockAllocator {
 unsafe impl Send for MemBlockAllocator {}
 unsafe impl Sync for MemBlockAllocator {}
 
-unsafe impl GlobalAlloc for Locked<MemBlockAllocator> {
-	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		let mut allocator = self.lock();
-
-		unsafe {
-			return allocator.alloc(layout);
-		}
-	}
-
-	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		let mut allocator = self.lock();
-
-		unsafe {
-			return allocator.dealloc(ptr, layout);
-		}
-	}
-}
-
 impl MemBlockAllocator {
 	/// Creates a new memory block allocator with empty region arrays.
 	///
