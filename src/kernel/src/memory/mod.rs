@@ -8,6 +8,7 @@ extern crate alloc;
 
 /* -------------------------------------- */
 
+pub mod addr;
 pub mod allocator;
 pub mod buddy;
 pub mod memblock;
@@ -15,12 +16,11 @@ pub mod node_pool;
 pub mod slab;
 pub mod transition;
 
+pub use addr::{PhysAddr, VirtAddr};
 pub use node_pool::NodePoolAllocator;
 
 /* -------------------------------------- */
 
-/// Type alias for representing physical memory addresses.
-pub type PhysAddr = usize;
 /// Defines the system's page size (typically 4 KiB on x86_64).
 pub const PAGE_SIZE: usize = 4096;
 
