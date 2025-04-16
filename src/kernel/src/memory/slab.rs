@@ -57,25 +57,27 @@ unsafe impl GlobalAlloc for Locked<SlabCache> {
 
 // Allocations
 impl SlabCache {
-	// TODO:
-	// - [] Check partial cachces
-	// - [] check empty cachces
-	// - [x] Ask Buddy Allocator for new memory
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		use core::ptr;
 
 		assert!(layout.size() <= self.object_size());
 
 		if !self.slabs_partial.is_empty() {
-			let popped_node = self.slabs_partial.pop_front().unwrap();
-
-			return self.add_object(popped_node);
+			match self.slabs_partial.pop_front() {
+				Some(node) => {
+					return self.add_object(node).unwrap_or(ptr::null_mut());
+				}
+				None => return ptr::null_mut(),
+			};
 		}
 
 		if !self.slabs_free.is_empty() {
-			let popped_node = self.slabs_free.pop_front().unwrap();
-
-			return self.add_object(popped_node);
+			match self.slabs_free.pop_front() {
+				Some(node) => {
+					return self.add_object(node).unwrap_or(ptr::null_mut());
+				}
+				None => return ptr::null_mut(),
+			};
 		}
 
 		let ptr: *mut u8 = {
@@ -117,7 +119,7 @@ impl SlabCache {
 			first_obj_ptr.expect("Newly initialized slab has no free objects!");
 		let object_to_return_ptr = object_to_return_nn.as_ptr();
 
-		let next_free_obj_option: Option<NonNull<u8>> = if objects_in_slab > 1 {
+		let next_free_obj_option = if objects_in_slab > 1 {
 			unsafe {
 				let next_free_raw = *(object_to_return_ptr as *const *mut u8);
 				NonNull::new(next_free_raw)
@@ -231,16 +233,10 @@ impl SlabCache {
 	fn add_object(
 		&mut self,
 		mut popped_node: NonNull<IntrusiveNode<Slab>>,
-	) -> *mut u8 {
-		let slab = unsafe { popped_node.as_mut().container_mut().unwrap() };
+	) -> Option<*mut u8> {
+		let slab = unsafe { popped_node.as_mut().container_mut()? };
 
-		let object_ptr = slab
-			.first_free_object
-			.take()
-			.expect(
-				"Partial slab cannot have empty free list! Inconsistent state.",
-			)
-			.as_ptr();
+		let object_ptr = slab.first_free_object.take()?.as_ptr();
 
 		slab.first_free_object = unsafe {
 			let next_free_raw = *(object_ptr as *const *mut u8);
@@ -256,6 +252,6 @@ impl SlabCache {
 			self.slabs_partial.push_front(Some(popped_node));
 		}
 
-		return object_ptr;
+		return Some(object_ptr);
 	}
 }

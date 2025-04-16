@@ -183,43 +183,10 @@ impl MemBlockAllocator {
 	/// # Safety
 	/// This function is unsafe and will panic if called.
 	///
-	/// # Parameters
-	/// * `ptr` - Pointer to the memory to deallocate
-	/// * `layout` - The layout that was used for allocation
-	///
 	/// # Panics
 	/// This function always panics if called
-	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr: PhysAddr = (ptr as usize).into();
-		let size = layout.size().next_multiple_of(PAGE_SIZE);
-
-		let mut found = false;
-		let mut reserved_index = 0;
-
-		for (i, region) in self.reserved_region.iter().enumerate() {
-			if region.base == addr && region.size >= size {
-				reserved_index = i;
-				found = true;
-				break;
-			}
-		}
-
-		if !found {
-			panic!(
-				"Attempted to deallocate memory not managed by this allocator"
-			);
-		}
-
-		let reserved = self.reserved_region[reserved_index];
-		self.remove(RegionType::Reserved, reserved_index);
-
-		if !self.add(reserved.base, reserved.size) {
-			println!("Max Count in reserved_region array");
-		}
-
-		self.coalesce_free_regions();
-
-		println_serial!("Dealloc has been called in memblock()");
+	pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
+		panic!("memblock::dealloc: Should never been called");
 	}
 
 	fn sort_regions(&mut self, region_type: RegionType) {
@@ -243,24 +210,6 @@ impl MemBlockAllocator {
 			}
 
 			regions[j] = key;
-		}
-	}
-
-	fn coalesce_free_regions(&mut self) {
-		self.sort_regions(RegionType::Available);
-
-		let mut i = 0;
-
-		while i < self.memory_count - 1 {
-			let current = self.memory_region[i];
-			let next = self.memory_region[i + 1];
-
-			if current.base + current.size == next.base {
-				self.memory_region[i].size += next.size;
-				self.remove(RegionType::Available, i + 1);
-			} else {
-				i += 1;
-			}
 		}
 	}
 
