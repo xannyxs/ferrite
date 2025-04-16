@@ -15,6 +15,7 @@ use core::{
 	ptr::NonNull,
 };
 
+#[derive(Debug)]
 struct Slab {
 	list: IntrusiveNode<Slab>,
 
@@ -66,13 +67,15 @@ impl SlabCache {
 		assert!(layout.size() <= self.object_size());
 
 		if !self.slabs_partial.is_empty() {
-			// TODO: Get addr for partial LL
-			return ptr::null_mut();
+			let popped_node = self.slabs_partial.pop_front().unwrap();
+
+			return self.add_object(popped_node);
 		}
 
 		if !self.slabs_free.is_empty() {
-			// TODO: Get addr for empty LL
-			return ptr::null_mut();
+			let popped_node = self.slabs_free.pop_front().unwrap();
+
+			return self.add_object(popped_node);
 		}
 
 		let ptr: *mut u8 = {
@@ -95,14 +98,6 @@ impl SlabCache {
 		if ptr.is_null() {
 			println_serial!(
 				"Buddy allocator failed to provide memory for new slab!"
-			);
-			return ptr::null_mut();
-		}
-
-		if self.object_size == 0 {
-			println_serial!(
-				"ERROR: New slab too small for objects size {} after metadata!",
-				self.object_size
 			);
 			return ptr::null_mut();
 		}
@@ -135,7 +130,7 @@ impl SlabCache {
 			ptr::write(
 				slab_ptr,
 				Slab {
-					list: Default::default(),
+					list: IntrusiveNode::new(NonNull::new(slab_ptr)),
 					cache: self as *const Self,
 					base_vaddr: object_start,
 					objects_in_use: 1,
@@ -152,13 +147,15 @@ impl SlabCache {
 			node_ptr
 		);
 
-		self.slabs_partial.push_front(node_ptr);
+		self.slabs_partial.push_back(NonNull::new(node_ptr));
 
 		return object_to_return_ptr;
 	}
 
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
 		let addr = ptr as usize;
+
+		unimplemented!();
 	}
 }
 
@@ -198,7 +195,7 @@ impl SlabCache {
 
 // Private interface
 impl SlabCache {
-	pub fn setup_free_list(
+	fn setup_free_list(
 		&self,
 		start: VirtAddr,
 		count: usize,
@@ -227,5 +224,38 @@ impl SlabCache {
 
 		unsafe { ptr::write(current_ptr as *mut usize, 0) };
 		return NonNull::new(start.as_mut_ptr::<u8>());
+	}
+
+	#[allow(clippy::unwrap_used)]
+	#[allow(clippy::expect_used)]
+	fn add_object(
+		&mut self,
+		mut popped_node: NonNull<IntrusiveNode<Slab>>,
+	) -> *mut u8 {
+		let slab = unsafe { popped_node.as_mut().container_mut().unwrap() };
+
+		let object_ptr = slab
+			.first_free_object
+			.take()
+			.expect(
+				"Partial slab cannot have empty free list! Inconsistent state.",
+			)
+			.as_ptr();
+
+		slab.first_free_object = unsafe {
+			let next_free_raw = *(object_ptr as *const *mut u8);
+			NonNull::new(next_free_raw)
+		};
+
+		slab.objects_in_use += 1;
+
+		if slab.objects_in_use == self.objects_per_slab {
+			println_serial!("Slab {:p} became full", popped_node.as_ptr());
+			self.slabs_full.push_front(Some(popped_node));
+		} else {
+			self.slabs_partial.push_front(Some(popped_node));
+		}
+
+		return object_ptr;
 	}
 }
