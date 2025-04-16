@@ -13,11 +13,13 @@ pub mod allocator;
 pub mod buddy;
 pub mod memblock;
 pub mod node_pool;
+pub mod paging;
 pub mod slab;
 pub mod transition;
 
 pub use addr::{PhysAddr, VirtAddr};
 pub use node_pool::NodePoolAllocator;
+pub use paging::Mapper;
 
 /* -------------------------------------- */
 
