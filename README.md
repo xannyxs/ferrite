@@ -36,10 +36,6 @@ mdbook serve --open docs
 
 The documentation provides insights into Ferrite's design philosophy and implementation details, which could be valuable for your own kernel development journey. Take this with a grain of salt, since I am not fimiliar with everything either.
 
-## Why "Ferrite"?
-
-The name "Ferrite" draws inspiration from both Unix naming conventions and natural fungal networks. Like the mycorrhizal networks that connect forest ecosystems, Ferrite aims to create an efficient, interconnected system for resource sharing and process communication. This biological metaphor extends to our architecture, where we treat system components as nodes in a living, adapting network.
-
 ## License
 
 Ferrite is licensed under the GPL License. See [LICENSE](LICENSE) for details.
