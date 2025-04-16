@@ -1,6 +1,13 @@
+//! An early physical memory allocator, similar in concept to Linux's memblock.
+//!
+//! Manages physical memory based on regions reported by the bootloader.
+//! It tracks available and reserved memory regions and provides basic
+//! allocation. Typically used during boot before the main page allocator is
+//! initialized.
+
 use super::{MemorySegment, PhysAddr, RegionType};
 use crate::{
-	arch::x86::multiboot::{get_memory_region, MultibootInfo},
+	arch::x86::multiboot::{get_memory_region, MultibootInfo, G_SEGMENTS},
 	memory::PAGE_SIZE,
 	println, println_serial,
 	sync::{mutex::MutexGuard, Locked},
@@ -17,7 +24,7 @@ const MAX_REGION: usize = 64;
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct MemRegion {
 	base: PhysAddr,
-	size: PhysAddr,
+	size: usize,
 }
 
 impl MemRegion {
@@ -29,7 +36,7 @@ impl MemRegion {
 	///
 	/// # Returns
 	/// A new `MemRegion` instance representing the specified memory area
-	pub const fn new(base: PhysAddr, size: PhysAddr) -> Self {
+	pub const fn new(base: PhysAddr, size: usize) -> Self {
 		return Self {
 			base,
 			size,
@@ -54,13 +61,24 @@ impl MemRegion {
 	/// An empty `MemRegion` instance
 	pub const fn empty() -> Self {
 		return MemRegion {
-			base: 0x0,
-			size: 0x0,
+			base: PhysAddr::new(0x0),
+			size: 0,
 		};
+	}
+
+	/// Returns the base of region
+	pub const fn base(&self) -> PhysAddr {
+		return self.base;
+	}
+
+	/// Returns size of region
+	pub const fn size(&self) -> usize {
+		return self.size;
 	}
 }
 
 /// `memblock` allocator metadata
+#[derive(Debug)]
 pub struct MemBlockAllocator {
 	memory_region: [MemRegion; MAX_REGION],
 	reserved_region: [MemRegion; MAX_REGION],
@@ -70,24 +88,6 @@ pub struct MemBlockAllocator {
 
 unsafe impl Send for MemBlockAllocator {}
 unsafe impl Sync for MemBlockAllocator {}
-
-unsafe impl GlobalAlloc for Locked<MemBlockAllocator> {
-	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		let mut allocator = self.lock();
-
-		unsafe {
-			return allocator.alloc(layout);
-		}
-	}
-
-	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		let mut allocator = self.lock();
-
-		unsafe {
-			return allocator.dealloc(ptr, layout);
-		}
-	}
-}
 
 impl MemBlockAllocator {
 	/// Creates a new memory block allocator with empty region arrays.
@@ -113,18 +113,41 @@ impl MemBlockAllocator {
 	///
 	/// Initializes the allocator with zero available and zero reserved memory
 	/// regions. This is typically called very early in the boot process.
-	pub fn init(&mut self, segments: &mut [MemorySegment; 16]) {
+	pub fn init(&mut self) {
+		let segments = G_SEGMENTS.lock();
+
 		for segment in segments.iter() {
-			if segment.segment_type() == RegionType::Available
-				&& !self.add(segment.start_addr(), segment.size())
-			{
-				println!("Max Count in memory_region array");
-			} else if segment.segment_type() == RegionType::Reserved
-				&& !self.reserved(segment.start_addr(), segment.size())
-			{
-				println!("Max Count in reserved_region array");
+			// TODO: Might add other RegionTypes
+			#[allow(clippy::single_match)]
+			match segment.segment_type() {
+				RegionType::Available => {
+					if !self.add(segment.start_addr().into(), segment.size()) {
+						panic!("memblock: MAX_COUNT is full in memory segment");
+					}
+				}
+				_ => {}
 			}
 		}
+	}
+
+	/// Returns a reference of the current length of `mem_region`
+	pub const fn mem_count(&self) -> usize {
+		return self.memory_count;
+	}
+
+	/// Returns a reference to the current `memregion`
+	pub const fn mem_region(&self) -> &[MemRegion; MAX_REGION] {
+		return &self.memory_region;
+	}
+
+	/// Returns a reference of the current length of `reserved_region`
+	pub const fn reserved_count(&self) -> usize {
+		return self.reserved_count;
+	}
+
+	/// Returns a reference to the current `reserved_region`
+	pub const fn reserved_region(&self) -> &[MemRegion; MAX_REGION] {
+		return &self.reserved_region;
 	}
 
 	/// Allocates memory with the specified layout requirements.
@@ -144,7 +167,9 @@ impl MemBlockAllocator {
 	/// A pointer to the allocated memory or null if allocation fails
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		match self.find_free_region(layout.size(), layout.align()) {
-			Some(addr) => return ptr::with_exposed_provenance_mut(addr),
+			Some(addr) => {
+				return ptr::with_exposed_provenance_mut(addr.as_usize())
+			}
 			None => return ptr::null_mut(),
 		}
 	}
@@ -158,42 +183,10 @@ impl MemBlockAllocator {
 	/// # Safety
 	/// This function is unsafe and will panic if called.
 	///
-	/// # Parameters
-	/// * `ptr` - Pointer to the memory to deallocate
-	/// * `layout` - The layout that was used for allocation
-	///
 	/// # Panics
 	/// This function always panics if called
-	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr = ptr as usize;
-		let size = layout.size().next_multiple_of(PAGE_SIZE);
-
-		let mut found = false;
-		let mut reserved_index = 0;
-
-		for (i, region) in self.reserved_region.iter().enumerate() {
-			if region.base == addr && region.size >= size {
-				reserved_index = i;
-				found = true;
-				break;
-			}
-		}
-
-		if !found {
-			panic!(
-				"Attempted to deallocate memory not managed by this allocator"
-			);
-		}
-
-		let reserved = self.reserved_region[reserved_index];
-		self.remove(RegionType::Reserved, reserved_index);
-
-		if !self.add(reserved.base, reserved.size) {
-			println!("Max Count in reserved_region array");
-		}
-
-		// TODO: Merge regions together if overlapping
-		self.coalesce_free_regions();
+	pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
+		panic!("memblock::dealloc: Should never been called");
 	}
 
 	fn sort_regions(&mut self, region_type: RegionType) {
@@ -217,24 +210,6 @@ impl MemBlockAllocator {
 			}
 
 			regions[j] = key;
-		}
-	}
-
-	fn coalesce_free_regions(&mut self) {
-		self.sort_regions(RegionType::Available);
-
-		let mut i = 0;
-
-		while i < self.memory_count - 1 {
-			let current = self.memory_region[i];
-			let next = self.memory_region[i + 1];
-
-			if current.base + current.size == next.base {
-				self.memory_region[i].size += next.size;
-				self.remove(RegionType::Available, i + 1);
-			} else {
-				i += 1;
-			}
 		}
 	}
 
@@ -303,7 +278,7 @@ impl MemBlockAllocator {
 		&mut self,
 		size: usize,
 		align: usize,
-	) -> Option<usize> {
+	) -> Option<PhysAddr> {
 		if self.memory_count == 0 || size == 0 {
 			return None;
 		}
@@ -319,11 +294,11 @@ impl MemBlockAllocator {
 			}
 
 			let base_addr = region.base;
-			let aligned_addr = if base_addr % required_align == 0 {
+			let aligned_addr = if base_addr.as_usize() % required_align == 0 {
 				base_addr
 			} else {
 				let align_mask = required_align - 1;
-				(base_addr + align_mask) & !align_mask
+				((base_addr.as_usize() + align_mask) & !align_mask).into()
 			};
 
 			let alignment_offset = aligned_addr - base_addr;
@@ -345,11 +320,12 @@ impl MemBlockAllocator {
 
 			self.remove(RegionType::Available, i);
 
-			let aligned_addr = if original_base % required_align == 0 {
+			let aligned_addr = if original_base.as_usize() % required_align == 0
+			{
 				original_base
 			} else {
 				let align_mask = required_align - 1;
-				(original_base + align_mask) & !align_mask
+				((original_base.as_usize() + align_mask) & !align_mask).into()
 			};
 
 			if !self.reserved(aligned_addr, alloc_size) {
@@ -370,7 +346,7 @@ impl MemBlockAllocator {
 
 			println_serial!(
 				"Allocated at: 0x{:x}, size: {}",
-				aligned_addr,
+				aligned_addr.as_usize(),
 				alloc_size
 			);
 			return Some(aligned_addr);

@@ -4,7 +4,6 @@ use crate::sync::{mutex::MutexGuard, Mutex};
 /// mutex. This type is particularly useful for creating thread-safe global
 /// state, such as allocators.
 pub struct Locked<A> {
-	/// The protected inner value wrapped in a mutex
 	inner: Mutex<A>,
 }
 

@@ -17,6 +17,9 @@
 // Safety and Documentation
 #![feature(strict_provenance_lints)] // Enable stricter pointer safety checks
 #![feature(abi_x86_interrupt)]
+#![feature(dropck_eyepatch)]
+#![feature(linked_list_cursors)]
+#![feature(allocator_api)]
 #![deny(fuzzy_provenance_casts)] // Enforce proper pointer provenance
 #![warn(missing_docs)] // Require documentation for public items
 #![deny(unsafe_op_in_unsafe_fn)] // Require explicit unsafe blocks even in unsafe functions
@@ -54,11 +57,9 @@ pub mod device;
 pub mod libc;
 /// Macro directory
 pub mod macros;
-/// Memory allocation
 pub mod memory;
 /// Panic
 pub mod panic;
-/// Sync - Threadsafe structs
 pub mod sync;
 /// Tests
 pub mod tests;
@@ -66,17 +67,32 @@ pub mod tests;
 pub mod tty;
 
 use crate::{arch::x86::multiboot::G_SEGMENTS, sync::Mutex};
-use alloc::boxed::Box;
+use alloc::{boxed::Box, format};
 use arch::x86::{
 	cpu::halt,
-	memory::get_page_directory,
-	multiboot::{get_memory_region, MultibootInfo, MultibootMmapEntry},
+	multiboot::{
+		get_biggest_available_segment_index, get_memory_region, MultibootInfo,
+		MultibootMmapEntry,
+	},
 };
-use core::{arch::asm, ffi::c_void};
+use collections::linked_list::Node;
+use core::{alloc::Layout, arch::asm, ffi::c_void};
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
-use memory::allocator::ALLOCATOR;
-use tty::serial::SERIAL;
+use macros::print;
+use memory::{
+	allocator::{
+		slab_cache_init, BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR,
+		NODE_POOL_ALLOCATOR,
+	},
+	buddy::BuddyAllocator,
+	memblock::{self, MemBlockAllocator},
+	node_pool, slab, NodePoolAllocator, PhysAddr, PAGE_SIZE,
+};
+use tty::{
+	log::{Logger, StatusProgram},
+	serial::SERIAL,
+};
 
 extern crate alloc;
 
@@ -98,6 +114,10 @@ pub extern "C" fn kernel_main(
 	magic_number: u32,
 	boot_info: &'static MultibootInfo,
 ) -> ! {
+	Logger::init("Kernel", Some("Starting initialization"));
+	Logger::divider();
+	Logger::newline();
+
 	if magic_number != MAGIC_VALUE {
 		panic!(
 			"Incorrect magic number. Current magic number: 0x{:x}",
@@ -114,17 +134,149 @@ pub extern "C" fn kernel_main(
     );
 	}
 
-	let mut segments = G_SEGMENTS.lock();
-	get_memory_region(&mut segments, boot_info);
-	ALLOCATOR.lock().init(&mut segments);
+	Logger::init(
+		"Memory Management",
+		Some("Starting memory subsystem initialization"),
+	);
 
-	let test = Box::new("Hallo wereld");
-	println_serial!("{}", test);
+	Logger::init_step(
+		"Memory Detection",
+		"Reading memory map from bootloader",
+		true,
+	);
+	SERIAL.lock().init();
+
+	get_memory_region(boot_info);
+
+	Logger::init_step(
+		"Memblock Allocator",
+		"Initializing early memory allocator",
+		true,
+	);
+
+	{
+		let mut memblock = EARLY_PHYSICAL_ALLOCATOR.lock();
+		memblock.get_or_init(MemBlockAllocator::new);
+		match memblock.get_mut() {
+    Some(alloc) => {
+        alloc.init();
+        Logger::ok("Memblock Allocator", Some("Initialization successful"));
+    },
+    None => panic!(
+        "Failed to initialize memory block allocator: unable to retrieve mutable reference. \
+        This could indicate that the allocator was not properly initialized or was dropped unexpectedly. \
+        Check EARLY_PHYSICAL_ALLOCATOR implementation."
+    ),
+};
+	}
+
+	Logger::init_step(
+		"Node Pool Allocator",
+		"Initializing Node Pool allocator",
+		true,
+	);
+
+	{
+		let index =
+			get_biggest_available_segment_index().expect("No region available");
+
+		let needed_nodes = G_SEGMENTS.lock()[index].size() / PAGE_SIZE;
+
+		println_serial!("{}", G_SEGMENTS.lock()[index].size());
+
+		let pool_layout = Layout::from_size_align(
+			needed_nodes * size_of::<Node<usize>>(),
+			align_of::<Node<usize>>(),
+		)
+		.expect("Error while creating a layout");
+
+		let ptr = {
+			let mut memblock_guard = EARLY_PHYSICAL_ALLOCATOR.lock();
+			let allocator =
+				memblock_guard.get_mut().expect("MemBlock not available");
+			unsafe { allocator.alloc(pool_layout) }
+		};
+
+		if ptr.is_null() {
+			panic!("Failed to allocate node pool from MemBlock");
+		}
+
+		let pool_base_addr: PhysAddr = (ptr as usize).into();
+		let node_pool_guard = NODE_POOL_ALLOCATOR.lock();
+
+		node_pool_guard.get_or_init(|| {
+			println_serial!(
+				"Initializing NodePoolAllocator at {:#x}",
+				pool_base_addr.as_usize()
+			);
+
+			return NodePoolAllocator::new(pool_base_addr, needed_nodes);
+		});
+
+		if node_pool_guard.get().is_none() {
+			panic!("NodePoolAllocator failed to initialize.");
+		}
+
+		println_serial!("NodePoolAllocator initialized successfully.");
+	}
+
+	Logger::init_step(
+		"Buddy Allocator",
+		"Initializing buddy page allocator",
+		true,
+	);
+
+	{
+		let mut base = 0;
+		{
+			let guard = EARLY_PHYSICAL_ALLOCATOR.lock();
+			let memblock = guard.get().unwrap();
+
+			let regions = memblock.mem_region();
+			if regions.is_empty() {
+				panic!("Not enough memory space");
+			}
+
+			for region in regions.iter() {
+				if !region.is_empty() {
+					base = region.base().into();
+					break;
+				}
+			}
+		};
+
+		#[allow(clippy::implicit_return)]
+		BUDDY_PAGE_ALLOCATOR
+			.lock()
+			.get_or_init(|| BuddyAllocator::new(base));
+	}
+
+	slab_cache_init();
+
+	{
+		EARLY_PHYSICAL_ALLOCATOR.lock().take();
+
+		if EARLY_PHYSICAL_ALLOCATOR.lock().get().is_some() {
+			panic!("EARLY_PHYSICAL_ALLOCATOR (memblock) has not been decommissioned.");
+		}
+	}
+
+	Logger::divider();
+	Logger::status("Memory Management", &StatusProgram::OK);
+
+	let test = Box::new("Hallo Wereld");
+	println_serial!("TEST: {}", test);
 	let another_test = Box::new("cool");
 	println_serial!("{}", test);
 	println_serial!("{}", another_test);
 
-	SERIAL.lock().init();
+	{
+		let test_test = Box::new("abcdef");
+		println_serial!("{}", test);
+		println_serial!("{}", another_test);
+		println_serial!("{}", test_test);
+	}
+
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
 

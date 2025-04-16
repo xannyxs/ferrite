@@ -14,12 +14,12 @@
 ENTRY(_start)
 
 SECTIONS {
-  /* Start at 2MB */
-  . = 2M;
-
   .gdt 0x800 : ALIGN(0x800) {
     *(.gdt)
   }
+
+  /* Start at 2MB */
+	. = 0x2M;
 
   .multiboot ALIGN(4K) : {
     KEEP(*(.multiboot))
@@ -48,9 +48,13 @@ SECTIONS {
   }
 
   .bss ALIGN(4K) : AT(ADDR(.bss) - 0xC0000000) {
+    _bss_start = .; 
     *(COMMON)
     *(.bss)
+    _bss_end = .; 
   }
 
-  _kernel_end = .;
+  _kernel_virtual_end = ALIGN(4K);
+  _kernel_physical_end = _kernel_virtual_end - 0xC0000000;
+  _kernel_end = _kernel_virtual_end;
 }

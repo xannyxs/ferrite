@@ -3,7 +3,7 @@ use crate::{arch::x86::cpu::halt, println, println_serial};
 
 pub type InterruptHandler = extern "x86-interrupt" fn(InterruptFrame);
 pub type InterruptHandlerWithError =
-	extern "x86-interrupt" fn(frame: InterruptFrame, error_code: u32);
+	extern "x86-interrupt" fn(frame: InterruptFrame, _error_code: u32);
 
 /// CPU-pushed interrupt stack frame in 32-bit mode
 #[repr(C)]
@@ -110,7 +110,7 @@ pub extern "x86-interrupt" fn device_not_available(frame: InterruptFrame) {
 
 pub extern "x86-interrupt" fn double_fault(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Double fault exception (#DF)");
 	println_serial!("{:?}", frame);
@@ -127,7 +127,7 @@ pub extern "x86-interrupt" fn coprocessor_segment_overrun(
 
 pub extern "x86-interrupt" fn invalid_tss(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Invalid TSS exception (#TS)");
 	println_serial!("{:?}", frame);
@@ -135,7 +135,7 @@ pub extern "x86-interrupt" fn invalid_tss(
 
 pub extern "x86-interrupt" fn segment_not_present(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Segment not present exception (#NP)");
 	println_serial!("{:?}", frame);
@@ -143,7 +143,7 @@ pub extern "x86-interrupt" fn segment_not_present(
 
 pub extern "x86-interrupt" fn stack_segment_fault(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Stack-segment fault (#SS)");
 	println_serial!("{:?}", frame);
@@ -151,12 +151,12 @@ pub extern "x86-interrupt" fn stack_segment_fault(
 
 pub extern "x86-interrupt" fn general_protection_fault(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("EXCEPTION: GENERAL PROTECTION FAULT (#GP)");
 	println!("===============================");
 
-	println!("Error Code: 0x{:04x}", error_code);
+	println!("Error Code: 0x{:04x}", _error_code);
 	println!("Debug information: {:?}", frame);
 	println_serial!("Debug information: {:?}", frame);
 
@@ -184,7 +184,7 @@ pub extern "x86-interrupt" fn x87_floating_point(frame: InterruptFrame) {
 
 pub extern "x86-interrupt" fn alignment_check(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Alignment check exception (#AC)");
 	println_serial!("{:?}", frame);
@@ -208,7 +208,7 @@ pub extern "x86-interrupt" fn virtualization(frame: InterruptFrame) {
 
 pub extern "x86-interrupt" fn security_exception(
 	frame: InterruptFrame,
-	error_code: u32,
+	_error_code: u32,
 ) {
 	println!("Security exception (#SX)");
 	println_serial!("{:?}", frame);

@@ -1,9 +1,11 @@
+//! Defines structures and functions related to parsing the Multiboot 1
+//! information structure provided by the bootloader.
+
 use crate::{
-	memory::{MemorySegment, RegionType},
+	memory::{MemorySegment, RegionType, PAGE_SIZE},
 	println_serial,
-	sync::{locked::Locked, mutex::MutexGuard},
+	sync::{mutex::MutexGuard, Locked},
 };
-use lazy_static::lazy_static;
 
 #[allow(missing_docs)]
 #[cfg(target_arch = "x86")]
@@ -109,17 +111,40 @@ pub struct MultibootInfo {
 	apm_table: u32,
 }
 
-// TODO: Add Mutex
-lazy_static! {
-	pub static ref G_SEGMENTS: Locked<[MemorySegment; 16]> =
-		Locked::new([MemorySegment::empty(); 16]);
-}
+/// Global static storage for the parsed memory map segments.
+///
+/// Initialized once during boot by `get_memory_region`. Access should be
+/// synchronized via the `Locked` wrapper. Maximum of 16 segments stored.
+// Note: lazy_static might be needed if Locked::new isn't const, or use
+// OnceCell. Assuming Locked::new is const based on previous context.
+// lazy_static! { // Use lazy_static if Locked::new() is not const
+pub static G_SEGMENTS: Locked<[MemorySegment; 16]> =
+	Locked::new([MemorySegment::empty(); 16]);
 
-pub fn get_memory_region(
-	segments: &mut [MemorySegment; 16],
-	boot_info: &MultibootInfo,
-) {
+/// Parses the Multiboot memory map and populates the provided `segments` array.
+///
+/// Iterates through the memory map entries provided by the `boot_info`
+/// structure, converts them into `MemorySegment` representations, and stores
+/// them in the `segments` slice. It reserves the region starting at physical
+/// address 0x0.
+///
+/// # Arguments
+/// * `segments` - A mutable array slice to be filled with parsed
+///   `MemorySegment` data. Must have a size of at least 16
+///   (`MAX_MEMORY_SEGMENTS`).
+/// * `boot_info` - A reference to the `MultibootInfo` structure provided by the
+///   bootloader.
+///
+/// # Panics
+/// Panics if the bootloader information does not contain a valid memory map
+/// (`flags` bit 6 not set), or if no memory regions are found in the map.
+#[allow(clippy::expect_used)]
+pub fn get_memory_region(boot_info: &MultibootInfo) {
 	use core::{mem, ptr};
+
+	if (boot_info.flags & (1 << 6)) == 0 {
+		panic!("CRITICAL: Bootloader did not provide a memory map!");
+	}
 
 	let mut count = 0;
 	let mut mmap = boot_info.mmap_addr as usize;
@@ -127,47 +152,92 @@ pub fn get_memory_region(
 
 	while mmap < mmap_end {
 		unsafe {
-			#[allow(clippy::expect_used)]
 			let entry = (ptr::with_exposed_provenance_mut(mmap)
 				as *const MultibootMmapEntry)
 				.as_ref()
 				.expect("Failed to read memory map entry");
 
-			// The first entry should be taken special care of, since it has
-			// some information about the IVP and NULL Pointer convetion
-			if entry.addr == 0x0 {
-				segments[count] = MemorySegment::new(
-					entry.addr as usize,
-					entry.len as usize,
-					RegionType::Reserved,
-				);
-			} else {
-				segments[count] = MemorySegment::new(
-					entry.addr as usize,
-					entry.len as usize,
-					entry.entry_type,
-				);
+			// Ignore everything under 1Mb
+			if entry.addr < 0x100000 {
+				mmap += (entry.size as usize) + mem::size_of::<u32>();
+				continue;
 			}
 
-			/* let base_addr = entry.addr as usize;
+			let phys_addr = get_kernel_physical_end();
+			let mut addr = entry.addr as usize;
+			let mut len = entry.len as usize;
+
+			if addr < phys_addr {
+				addr = phys_addr + PAGE_SIZE;
+				len = (entry.addr + entry.len) as usize - addr;
+			}
+
+			G_SEGMENTS.lock()[count] =
+				MemorySegment::new(addr, len, entry.entry_type);
+
+			let base_addr = entry.addr as usize;
 			let length = entry.len as usize;
 			let entry_type = entry.entry_type;
 
 			println_serial!(
-				"  Entry {}: Base=0x{:016x}, Length=0x{:016x} ({} bytes), Type={:?}",
+				"  Entry {}: Base=0x{:08x}, Length=0x{:08x} ({} bytes), Type={:?}",
 				count,
 				base_addr,
 				length,
 				length,
 				entry_type,
-			); */
+			);
 
 			count += 1;
-			mmap += (entry.size as usize) + mem::size_of::<u32>()
+			mmap += (entry.size as usize) + mem::size_of::<u32>();
 		}
 	}
 
 	if count == 0 {
 		panic!("Could not find any memory regions in map (or map was empty)!");
+	}
+}
+
+pub fn get_biggest_available_segment_index() -> Option<usize> {
+	let segments_guard = G_SEGMENTS.lock();
+	let segments = &*segments_guard;
+
+	let mut biggest_index: Option<usize> = None;
+	let mut current_max_size: usize = 0;
+
+	for (index, segment) in segments.iter().enumerate() {
+		if segment.segment_type() != RegionType::Available
+			|| segment.start_addr() == 0x0
+		{
+			continue;
+		}
+
+		if biggest_index.is_none() || segment.size() > current_max_size {
+			current_max_size = segment.size();
+			biggest_index = Some(index);
+		}
+	}
+
+	return biggest_index;
+}
+
+/* -------------------------------------- */
+
+extern "C" {
+	static _kernel_virtual_end: u8;
+	static _kernel_physical_end: u8;
+}
+
+/// Function to get the physical end address of the kernel image.
+pub fn get_kernel_physical_end() -> usize {
+	unsafe {
+		return &_kernel_physical_end as *const u8 as usize;
+	}
+}
+
+/// Function to get the virtual end address of the kernel image.
+pub fn get_kernel_virtual_end() -> usize {
+	unsafe {
+		return &_kernel_virtual_end as *const u8 as usize;
 	}
 }

@@ -24,8 +24,24 @@ pub enum VgaColour {
 	LightCyan = 11,
 	LightRed = 12,
 	LightMagenta = 13,
-	LightBrown = 14,
+	Yellow = 14,
 	White = 15,
+}
+
+#[doc(hidden)]
+pub struct SemanticColors;
+
+#[doc(hidden)]
+impl SemanticColors {
+	pub const BACKGROUND: VgaColour = VgaColour::Black;
+	pub const CRITICAL: VgaColour = VgaColour::LightRed;
+	pub const DEBUG: VgaColour = VgaColour::DarkGrey;
+	pub const ERROR: VgaColour = VgaColour::Red;
+	pub const FOREGROUND: VgaColour = VgaColour::White;
+	pub const INFO: VgaColour = VgaColour::LightCyan;
+	pub const SUCCESS: VgaColour = VgaColour::Green;
+	pub const TRACE: VgaColour = VgaColour::LightGrey;
+	pub const WARNING: VgaColour = VgaColour::Brown;
 }
 
 /* -------------------------------------- */

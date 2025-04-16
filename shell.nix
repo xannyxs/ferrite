@@ -27,6 +27,7 @@ pkgs.mkShell {
     # Other
     grub2
     bear
+    tree
   ];
 
   shellHook = ''

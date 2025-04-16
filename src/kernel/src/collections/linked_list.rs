@@ -1,5 +1,5 @@
-use alloc::boxed::Box;
-use core::ptr::NonNull;
+use alloc::{alloc::Global, boxed::Box};
+use core::{alloc::Allocator, ptr::NonNull};
 
 /// A node in a doubly-linked list.
 ///
@@ -13,9 +13,18 @@ pub struct Node<T> {
 	pub element: T,
 }
 
-impl<T> Drop for LinkedList<T> {
-	fn drop(&mut self) {
-		self.clear();
+impl<T> Node<T> {
+	fn new(element: T) -> Self {
+		return Node {
+			next: None,
+			prev: None,
+			element,
+		};
+	}
+
+	#[allow(clippy::boxed_local)]
+	fn into_element<A: Allocator>(self: Box<Self, A>) -> T {
+		return self.element;
 	}
 }
 
@@ -27,164 +36,223 @@ impl<T> Drop for LinkedList<T> {
 ///
 /// The list tracks its length, which is updated whenever nodes are added or
 /// removed.
-#[derive(Default)]
-pub struct LinkedList<T> {
+pub struct LinkedList<T, A: Allocator = Global> {
 	head: Option<NonNull<Node<T>>>,
 	tail: Option<NonNull<Node<T>>>,
-	length: usize,
+	len: usize,
+	alloc: A,
+}
+
+// Private methods
+impl<T, A: Allocator> LinkedList<T, A> {
+	/// Removes and returns the first element from the list, or None if empty.
+	#[inline]
+	#[allow(clippy::implicit_return)]
+	fn pop_front_node(&mut self) -> Option<Box<Node<T>, &A>> {
+		// This method takes care not to create mutable references to whole
+		// nodes,
+		// to maintain validity of aliasing pointers into `element`.
+		self.head.map(|node| unsafe {
+			let node = Box::from_raw_in(node.as_ptr(), &self.alloc);
+			self.head = node.next;
+			match self.head {
+				None => self.tail = None,
+				// Not creating new mutable (unique!) references overlapping
+				// `element`.
+				Some(head) => (*head.as_ptr()).prev = None,
+			}
+
+			self.len -= 1;
+
+			return node;
+		})
+	}
+
+	/// Removes and returns the node at the back of the list.
+	#[inline]
+	#[allow(clippy::implicit_return)]
+	fn pop_back_node(&mut self) -> Option<Box<Node<T>, &A>> {
+		// This method takes care not to create mutable references to whole
+		// nodes,
+		// to maintain validity of aliasing pointers into `element`.
+		self.tail.map(|node| unsafe {
+			let node = Box::from_raw_in(node.as_ptr(), &self.alloc);
+			self.tail = node.prev;
+			match self.tail {
+				None => self.head = None,
+				// Not creating new mutable (unique!) references overlapping
+				// `element`.
+				Some(tail) => (*tail.as_ptr()).next = None,
+			}
+
+			self.len -= 1;
+
+			return node;
+		})
+	}
+
+	/// Adds the given node to the front of the list.
+	///
+	/// # Safety
+	/// `node` must point to a valid node that was boxed and leaked using the
+	/// list's allocator. This method takes ownership of the node, so the
+	/// pointer should not be used again.
+	#[inline]
+	unsafe fn push_front_node(&mut self, node: NonNull<Node<T>>) {
+		// This method takes care not to create mutable references to whole
+		// nodes, to maintain validity of aliasing pointers into `element`.
+		unsafe {
+			(*node.as_ptr()).next = self.head;
+			(*node.as_ptr()).prev = None;
+			let node = Some(node);
+
+			match self.head {
+				None => self.tail = node,
+				// Not creating new mutable (unique!) references overlapping
+				// `element`.
+				Some(head) => (*head.as_ptr()).prev = node,
+			}
+
+			self.head = node;
+			self.len += 1;
+		}
+	}
+
+	/// Adds the given node to the back of the list.
+	///
+	/// # Safety
+	/// `node` must point to a valid node that was boxed and leaked using the
+	/// list's allocator.
+	/// This method takes ownership of the node, so the pointer should not be
+	/// used again.
+	#[inline]
+	unsafe fn push_back_node(&mut self, node: NonNull<Node<T>>) {
+		// This method takes care not to create mutable references to whole
+		// nodes,
+		// to maintain validity of aliasing pointers into `element`.
+		unsafe {
+			(*node.as_ptr()).next = None;
+			(*node.as_ptr()).prev = self.tail;
+			let node = Some(node);
+			match self.tail {
+				None => self.head = node,
+				// Not creating new mutable (unique!) references overlapping
+				// `element`.
+				Some(tail) => (*tail.as_ptr()).next = node,
+			}
+
+			self.tail = node;
+			self.len += 1;
+		}
+	}
+
+	/// Unlinks the specified node from the current list.
+	///
+	/// Warning: this will not check that the provided node belongs to the
+	/// current list.
+	///
+	/// This method takes care not to create mutable references to `element`, to
+	/// maintain validity of aliasing pointers.
+	#[inline]
+	unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
+		let node = unsafe { node.as_mut() }; // this one is ours now, we can create an &mut.
+									   // Not creating new mutable (unique!) references overlapping `element`.
+		match node.prev {
+			Some(prev) => unsafe { (*prev.as_ptr()).next = node.next },
+			// this node is the head node
+			None => self.head = node.next,
+		};
+
+		match node.next {
+			Some(next) => unsafe { (*next.as_ptr()).prev = node.prev },
+			// this node is the tail node
+			None => self.tail = node.prev,
+		};
+
+		self.len -= 1;
+	}
+}
+
+impl<T> Default for LinkedList<T> {
+	/// Creates an empty `LinkedList<T>`.
+	#[inline]
+	fn default() -> Self {
+		return Self::new();
+	}
 }
 
 impl<T> LinkedList<T> {
-	/// Returns true if the list contains no elements, false otherwise.
-	#[allow(clippy::implicit_return)]
+	/// Creates an empty `LinkedList`.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use std::collections::LinkedList;
+	///
+	/// let list: LinkedList<u32> = LinkedList::new();
+	/// ```
+	#[inline]
+	#[must_use]
+	pub const fn new() -> Self {
+		return LinkedList {
+			head: None,
+			tail: None,
+			len: 0,
+			alloc: Global,
+		};
+	}
+}
+
+impl<T, A: Allocator> LinkedList<T, A> {
+	/// Constructs an empty `LinkedList<T, A>`.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// #![feature(allocator_api)]
+	///
+	/// use std::{alloc::System, collections::LinkedList};
+	///
+	/// let list: LinkedList<u32, _> = LinkedList::new_in(System);
+	/// ```
+	#[inline]
+	pub const fn new_in(alloc: A) -> Self {
+		return LinkedList {
+			head: None,
+			tail: None,
+			len: 0,
+			alloc,
+		};
+	}
+
+	/// Returns `true` if the `LinkedList` is empty.
+	#[inline]
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
-		self.length == 0
+		return self.head.is_none();
 	}
 
-	/// Returns the number of elements currently in the list.
-	#[allow(clippy::implicit_return)]
+	/// Returns the length of the `LinkedList`.
+	#[inline]
+	#[must_use]
 	pub fn len(&self) -> usize {
-		self.length
+		return self.len;
 	}
 
-	/// Removes all elements from the list, properly deallocating their memory.
+	/// Removes all elements from the `LinkedList`.
+	#[inline]
 	pub fn clear(&mut self) {
-		while !self.is_empty() {
-			unsafe {
-				self.pop_back();
-			}
-		}
-	}
+		use core::mem;
 
-	/// Removes and returns the first element from the list, or None if empty.
-	///
-	/// # Safety
-	/// Uses Box::from_raw to reconstruct and drop Boxes, directly manipulates
-	/// raw pointers.
-	pub unsafe fn pop_front(&mut self) -> Option<T> {
-		if self.length == 0 {
-			return None;
-		}
-
-		let head_ptr = self.head?;
-
-		if self.length == 1 {
-			self.tail = None;
-			self.head = None;
-			self.length = 0;
-
-			let head_box = unsafe { Box::from_raw(head_ptr.as_ptr()) };
-			return Some(head_box.element);
-		}
-
-		let mut second_ptr = unsafe { head_ptr.as_ref().next? };
-
-		unsafe {
-			second_ptr.as_mut().prev = None;
-		}
-
-		self.head = Some(second_ptr);
-		self.length -= 1;
-
-		let head_box = unsafe { Box::from_raw(head_ptr.as_ptr()) };
-
-		return Some(head_box.element);
-	}
-
-	/// Removes and returns the last element from the list, or None if empty.
-	///
-	/// # Safety
-	/// Uses Box::from_raw to reconstruct and drop Boxes, directly manipulates
-	/// raw pointers.
-	pub unsafe fn pop_back(&mut self) -> Option<T> {
-		if self.length == 0 {
-			return None;
-		}
-
-		let tail_ptr = self.tail?;
-
-		if self.length == 1 {
-			self.tail = None;
-			self.head = None;
-			self.length = 0;
-
-			let tail_box = unsafe { Box::from_raw(tail_ptr.as_ptr()) };
-			return Some(tail_box.element);
-		}
-
-		let mut second_last_ptr = unsafe { tail_ptr.as_ref().prev? };
-
-		unsafe {
-			second_last_ptr.as_mut().next = None;
-		}
-
-		self.tail = Some(second_last_ptr);
-		self.length -= 1;
-
-		let tail_box = unsafe { Box::from_raw(tail_ptr.as_ptr()) };
-
-		return Some(tail_box.element);
-	}
-
-	/// Adds a node to the front of the list.
-	///
-	/// # Safety
-	/// - Uses `Box::leak` to manually manage memory that must be freed in
-	///   `drop`
-	/// - Manipulates raw pointers which must remain valid for the list's
-	///   lifetime
-	/// - Caller must ensure the list is properly initialized and eventually
-	///   dropped
-	pub unsafe fn push_front(&mut self, element: T) {
-		let new_node = Box::new(Node {
-			element,
-			next: self.head,
-			prev: None,
+		// We need to drop the nodes while keeping self.alloc
+		// We can do this by moving (head, tail, len) into a new list that
+		// borrows self.alloc
+		drop(LinkedList {
+			head: self.head.take(),
+			tail: self.tail.take(),
+			len: mem::take(&mut self.len),
+			alloc: &self.alloc,
 		});
-
-		let node_ptr = NonNull::from(Box::leak(new_node));
-
-		match self.head {
-			Some(mut head_ptr) => unsafe {
-				head_ptr.as_mut().prev = Some(node_ptr);
-			},
-			None => {
-				self.tail = Some(node_ptr);
-			}
-		}
-
-		self.head = Some(node_ptr);
-		self.length += 1;
-	}
-
-	/// Adds a node to the back of the list.
-	///
-	/// # Safety
-	/// - Uses `Box::leak` to manually manage memory that must be freed in
-	///   `drop`
-	/// - Manipulates raw pointers which must remain valid for the list's
-	///   lifetime
-	/// - Caller must ensure the list is properly initialized and eventually
-	///   dropped
-	pub unsafe fn push_back(&mut self, element: T) {
-		let new_node = Box::new(Node {
-			element,
-			next: None,
-			prev: self.tail,
-		});
-
-		let node_ptr = NonNull::from(Box::leak(new_node));
-
-		match self.tail {
-			Some(mut tail_ptr) => unsafe {
-				tail_ptr.as_mut().next = Some(node_ptr);
-			},
-			None => {
-				self.head = Some(node_ptr);
-			}
-		}
-		self.tail = Some(node_ptr);
-		self.length += 1;
 	}
 
 	/// Returns a reference to the first element in the list, or None if the
@@ -217,5 +285,239 @@ impl<T> LinkedList<T> {
 	pub fn back_mut(&mut self) -> Option<&mut T> {
 		self.tail
 			.map(|mut node_ptr| unsafe { &mut node_ptr.as_mut().element })
+	}
+
+	/// Removes the first element and returns it, or `None` if the list is
+	/// empty.
+	pub fn pop_front(&mut self) -> Option<T> {
+		return self.pop_front_node().map(Node::into_element);
+	}
+
+	/// Removes the last element from a list and returns it, or `None` if
+	/// it is empty.
+	pub fn pop_back(&mut self) -> Option<T> {
+		return self.pop_back_node().map(Node::into_element);
+	}
+
+	/// Appends an element to the back of a list.
+	pub fn push_back(&mut self, elt: T) {
+		let node = Box::new_in(Node::new(elt), &self.alloc);
+		let node_ptr = NonNull::from(Box::leak(node));
+
+		// SAFETY: node_ptr is a unique pointer to a node we boxed with
+		// self.alloc and leaked
+		unsafe {
+			self.push_back_node(node_ptr);
+		}
+	}
+
+	/// Adds an element first in the list.
+	pub fn push_front(&mut self, elt: T) {
+		let node = Box::new_in(Node::new(elt), &self.alloc);
+		let node_ptr = NonNull::from(Box::leak(node));
+
+		// SAFETY: node_ptr is a unique pointer to a node we boxed with
+		// self.alloc and leaked
+		unsafe {
+			self.push_front_node(node_ptr);
+		}
+	}
+
+	/// Provides a cursor with editing operations at the front element.
+	///
+	/// The cursor is pointing to the "ghost" non-element if the list is empty.
+	#[inline]
+	#[must_use]
+	pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T, A> {
+		return CursorMut {
+			index: 0,
+			current: self.head,
+			list: self,
+		};
+	}
+}
+
+unsafe impl<#[may_dangle] T, A: Allocator> Drop for LinkedList<T, A> {
+	fn drop(&mut self) {
+		use core::mem;
+
+		struct DropGuard<'a, T, A: Allocator>(&'a mut LinkedList<T, A>);
+
+		impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
+			fn drop(&mut self) {
+				// Continue the same loop we do below. This only runs when a
+				// destructor has
+
+				// panicked. If another one panics this will abort.
+
+				while self.0.pop_front_node().is_some() {}
+			}
+		}
+
+		// Wrap self so that if a destructor panics, we can try to keep looping
+
+		let guard = DropGuard(self);
+
+		while guard.0.pop_front_node().is_some() {}
+
+		mem::forget(guard);
+	}
+}
+
+/************************************* */
+
+/// A cursor over a `LinkedList`.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek
+/// back-and-forth.
+///
+/// Cursors always rest between two elements in the list, and index in a
+/// logically circular way.
+/// To accommodate this, there is a "ghost" non-element that yields `None`
+/// between the head and
+/// tail of the list.
+///
+/// When created, cursors start at the front of the list, or the "ghost"
+/// non-element if the list is empty.
+pub struct Cursor<'a, T: 'a, A: Allocator = Global> {
+	index: usize,
+	current: Option<NonNull<Node<T>>>,
+	list: &'a LinkedList<T, A>,
+}
+
+impl<'a, T, A: Allocator> Cursor<'a, T, A> {
+	/// Returns the cursor position index within the `LinkedList`.
+	///
+	/// This returns `None` if the cursor is currently pointing to the
+	/// "ghost" non-element.
+	#[must_use]
+	pub fn index(&self) -> Option<usize> {
+		let _ = self.current?;
+		return Some(self.index);
+	}
+
+	/// Returns a reference to the element that the cursor is currently
+	/// pointing to.
+	///
+	/// This returns `None` if the cursor is currently pointing to the
+	/// "ghost" non-element.
+	#[must_use]
+	#[allow(clippy::implicit_return)]
+	pub fn current(&self) -> Option<&'a T> {
+		unsafe { self.current.map(|current| &(*current.as_ptr()).element) }
+	}
+
+	/// Moves the cursor to the next element of the `LinkedList`.
+	///
+	/// If the cursor is pointing to the "ghost" non-element then this will move
+	/// it to
+	/// the first element of the `LinkedList`. If it is pointing to the last
+	/// element of the `LinkedList` then this will move it to the "ghost"
+	/// non-element.
+	pub fn move_next(&mut self) {
+		match self.current.take() {
+			// We had no current element; the cursor was sitting at the start
+			// position
+			// Next element should be the head of the list
+			None => {
+				self.current = self.list.head;
+				self.index = 0;
+			}
+
+			// We had a previous element, so let's go to its next
+			Some(current) => unsafe {
+				self.current = current.as_ref().next;
+				self.index += 1;
+			},
+		}
+	}
+}
+
+/// A cursor over a `LinkedList` with editing operations.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek
+/// back-and-forth, and can
+/// safely mutate the list during iteration. This is because the lifetime of its
+/// yielded
+/// references is tied to its own lifetime, instead of just the underlying list.
+/// This means
+/// cursors cannot yield multiple elements at once.
+///
+/// Cursors always rest between two elements in the list, and index in a
+/// logically circular way.
+/// To accommodate this, there is a "ghost" non-element that yields `None`
+/// between the head and
+/// tail of the list.
+pub struct CursorMut<'a, T: 'a, A: Allocator = Global> {
+	index: usize,
+	current: Option<NonNull<Node<T>>>,
+	list: &'a mut LinkedList<T, A>,
+}
+
+#[allow(clippy::extra_unused_lifetimes)]
+impl<'a, T, A: Allocator> CursorMut<'_, T, A> {
+	/// Returns the cursor position index within the `LinkedList`.
+	///
+	/// This returns `None` if the cursor is currently pointing to the
+	/// "ghost" non-element.
+	#[must_use]
+	pub fn index(&self) -> Option<usize> {
+		let _ = self.current?;
+		return Some(self.index);
+	}
+
+	/// Moves the cursor to the next element of the `LinkedList`.
+	///
+	/// If the cursor is pointing to the "ghost" non-element then this will move
+	/// it to
+	/// the first element of the `LinkedList`. If it is pointing to the last
+	/// element of the `LinkedList` then this will move it to the "ghost"
+	/// non-element.
+	pub fn move_next(&mut self) {
+		match self.current.take() {
+			// We had no current element; the cursor was sitting at the start
+			// position
+			// Next element should be the head of the list
+			None => {
+				self.current = self.list.head;
+				self.index = 0;
+			}
+
+			// We had a previous element, so let's go to its next
+			Some(current) => unsafe {
+				self.current = current.as_ref().next;
+				self.index += 1;
+			},
+		}
+	}
+
+	/// Returns a reference to the element that the cursor is currently
+	/// pointing to.
+	///
+	/// This returns `None` if the cursor is currently pointing to the
+	/// "ghost" non-element.
+	#[must_use]
+	#[allow(clippy::implicit_return)]
+	pub fn current(&mut self) -> Option<&mut T> {
+		unsafe { self.current.map(|current| &mut (*current.as_ptr()).element) }
+	}
+
+	/// Removes the current element from the `LinkedList`.
+	///
+	/// The element that was removed is returned, and the cursor is
+	/// moved to point to the next element in the `LinkedList`.
+	///
+	/// If the cursor is currently pointing to the "ghost" non-element then no
+	/// element is removed and `None` is returned.
+	pub fn remove_current(&mut self) -> Option<T> {
+		let unlinked_node = self.current?;
+
+		unsafe {
+			self.current = unlinked_node.as_ref().next;
+			self.list.unlink_node(unlinked_node);
+
+			let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
+			return Some(unlinked_node.element);
+		}
 	}
 }
