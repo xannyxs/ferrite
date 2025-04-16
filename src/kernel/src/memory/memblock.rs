@@ -24,7 +24,7 @@ const MAX_REGION: usize = 64;
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct MemRegion {
 	base: PhysAddr,
-	size: PhysAddr,
+	size: usize,
 }
 
 impl MemRegion {
@@ -36,7 +36,7 @@ impl MemRegion {
 	///
 	/// # Returns
 	/// A new `MemRegion` instance representing the specified memory area
-	pub const fn new(base: PhysAddr, size: PhysAddr) -> Self {
+	pub const fn new(base: PhysAddr, size: usize) -> Self {
 		return Self {
 			base,
 			size,
@@ -61,13 +61,13 @@ impl MemRegion {
 	/// An empty `MemRegion` instance
 	pub const fn empty() -> Self {
 		return MemRegion {
-			base: 0x0,
-			size: 0x0,
+			base: PhysAddr::new(0x0),
+			size: 0,
 		};
 	}
 
 	/// Returns the base of region
-	pub const fn base(&self) -> usize {
+	pub const fn base(&self) -> PhysAddr {
 		return self.base;
 	}
 
@@ -121,7 +121,7 @@ impl MemBlockAllocator {
 			#[allow(clippy::single_match)]
 			match segment.segment_type() {
 				RegionType::Available => {
-					if !self.add(segment.start_addr(), segment.size()) {
+					if !self.add(segment.start_addr().into(), segment.size()) {
 						panic!("memblock: MAX_COUNT is full in memory segment");
 					}
 				}
@@ -167,7 +167,9 @@ impl MemBlockAllocator {
 	/// A pointer to the allocated memory or null if allocation fails
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		match self.find_free_region(layout.size(), layout.align()) {
-			Some(addr) => return ptr::with_exposed_provenance_mut(addr),
+			Some(addr) => {
+				return ptr::with_exposed_provenance_mut(addr.as_usize())
+			}
 			None => return ptr::null_mut(),
 		}
 	}
@@ -188,7 +190,7 @@ impl MemBlockAllocator {
 	/// # Panics
 	/// This function always panics if called
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr = ptr as usize;
+		let addr: PhysAddr = (ptr as usize).into();
 		let size = layout.size().next_multiple_of(PAGE_SIZE);
 
 		let mut found = false;
@@ -327,7 +329,7 @@ impl MemBlockAllocator {
 		&mut self,
 		size: usize,
 		align: usize,
-	) -> Option<usize> {
+	) -> Option<PhysAddr> {
 		if self.memory_count == 0 || size == 0 {
 			return None;
 		}
@@ -343,11 +345,11 @@ impl MemBlockAllocator {
 			}
 
 			let base_addr = region.base;
-			let aligned_addr = if base_addr % required_align == 0 {
+			let aligned_addr = if base_addr.as_usize() % required_align == 0 {
 				base_addr
 			} else {
 				let align_mask = required_align - 1;
-				(base_addr + align_mask) & !align_mask
+				((base_addr.as_usize() + align_mask) & !align_mask).into()
 			};
 
 			let alignment_offset = aligned_addr - base_addr;
@@ -369,11 +371,12 @@ impl MemBlockAllocator {
 
 			self.remove(RegionType::Available, i);
 
-			let aligned_addr = if original_base % required_align == 0 {
+			let aligned_addr = if original_base.as_usize() % required_align == 0
+			{
 				original_base
 			} else {
 				let align_mask = required_align - 1;
-				(original_base + align_mask) & !align_mask
+				((original_base.as_usize() + align_mask) & !align_mask).into()
 			};
 
 			if !self.reserved(aligned_addr, alloc_size) {
@@ -394,7 +397,7 @@ impl MemBlockAllocator {
 
 			println_serial!(
 				"Allocated at: 0x{:x}, size: {}",
-				aligned_addr,
+				aligned_addr.as_usize(),
 				alloc_size
 			);
 			return Some(aligned_addr);

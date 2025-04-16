@@ -98,7 +98,7 @@ impl BuddyAllocator {
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		match self.find_free_block(layout) {
 			Some(block_addr) => {
-				return ptr::with_exposed_provenance_mut(block_addr);
+				return ptr::with_exposed_provenance_mut(block_addr.as_usize());
 			}
 			None => {
 				return ptr::null_mut();
@@ -177,7 +177,7 @@ impl BuddyAllocator {
 
 	/// Finds a free block of memory of the requested size.
 	/// Returns Some(address) if found, None if no suitable block available.
-	fn find_free_block(&mut self, layout: Layout) -> Option<usize> {
+	fn find_free_block(&mut self, layout: Layout) -> Option<PhysAddr> {
 		let mut k = 0;
 
 		let required_size = layout.size().max(layout.align());
@@ -199,13 +199,13 @@ impl BuddyAllocator {
 			return None;
 		}
 
-		let block_addr = self.free_lists[k].pop_back()?;
+		let block_addr: PhysAddr = self.free_lists[k].pop_back()?.into();
 
 		while k > required_order {
 			let buddy_offset = self.min_block_size * (1 << (k - 1));
 			let buddy_addr = block_addr + buddy_offset;
 
-			self.free_lists[k - 1].push_back(buddy_addr);
+			self.free_lists[k - 1].push_back(buddy_addr.as_usize());
 
 			k -= 1;
 		}
@@ -221,7 +221,7 @@ impl BuddyAllocator {
 	}
 
 	fn mark_allocated(&mut self, addr: PhysAddr, order: usize) {
-		let i = (addr - self.base) / self.min_block_size;
+		let i = (addr.as_usize() - self.base) / self.min_block_size;
 
 		let blocks_to_mark = 1 << order;
 

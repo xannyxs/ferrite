@@ -1,15 +1,19 @@
 //! Defines the kernel's global memory allocator instance.
 
 use super::{
-	buddy::BuddyAllocator, memblock::MemBlockAllocator, slab::SlabAllocator,
+	buddy::BuddyAllocator, memblock::MemBlockAllocator, slab::SlabCache,
 	NodePoolAllocator,
 };
-use crate::{memory::allocator, sync::Locked};
+use crate::{memory::allocator, println_serial, sync::Locked};
 use core::{
 	alloc::{GlobalAlloc, Layout},
 	cell::OnceCell,
 	ptr,
 };
+
+const SLAB_CACHE_COUNT: usize = 8;
+const CACHE_SIZES: [usize; SLAB_CACHE_COUNT] =
+	[8, 16, 32, 64, 128, 256, 512, 1024];
 
 // 1. Define static for the EARLY allocator (MemBlock) NO #[global_allocator]
 //    attribute here!
@@ -28,7 +32,8 @@ pub static NODE_POOL_ALLOCATOR: Locked<OnceCell<NodePoolAllocator>> =
 #[allow(missing_docs)]
 pub static BUDDY_PAGE_ALLOCATOR: Locked<OnceCell<BuddyAllocator>> =
 	Locked::new(OnceCell::new());
-static KERNEL_HEAP_ALLOCATOR: Locked<OnceCell<SlabAllocator>> =
+
+static SLAB_CACHES: Locked<OnceCell<[SlabCache; SLAB_CACHE_COUNT]>> =
 	Locked::new(OnceCell::new());
 
 // 3. Define the actual GLOBAL ALLOCATOR static. This will WRAP access to the
@@ -40,22 +45,80 @@ static GLOBAL_ALLOCATOR: Locked<KernelAllocator> = Locked::new(KernelAllocator);
 
 unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
+		if layout.size() == 0 {
+			return ptr::null_mut();
+		}
 
-		match allocator.get_mut() {
-			Some(allocator) => unsafe { allocator.alloc(layout) },
-			None => ptr::null_mut(),
+		// TODO: If there is no cache Buddy Allocator should take over
+		let index = CACHE_SIZES.iter().position(|&cache_size| {
+			return cache_size >= layout.size();
+		});
+
+		match index {
+			Some(index) => {
+				println_serial!("Locking Slab Cache");
+				let mut allocator = SLAB_CACHES.lock();
+				println_serial!("Locked Slab Cache");
+
+				match allocator.get_mut() {
+					Some(caches) => {
+						return unsafe { caches[index].alloc(layout) };
+					}
+					None => return ptr::null_mut(),
+				}
+			}
+			None => {
+				println_serial!(
+					"No suitable cache found for size {}",
+					layout.size()
+				);
+				return ptr::null_mut();
+			}
 		}
 	}
 
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		let mut allocator = KERNEL_HEAP_ALLOCATOR.lock();
+		if layout.size() == 0 {
+			return;
+		}
 
-		match allocator.get_mut() {
-			Some(allocator) => unsafe { allocator.dealloc(ptr, layout) },
-			None => {
-				panic!("Heap allocator not initialized yet! Cannot deallocate.")
+		// TODO: If there is no cache Buddy Allocator should take over
+		let index = CACHE_SIZES.iter().position(|&cache_size| {
+			return cache_size >= layout.size();
+		});
+
+		match index {
+			Some(index) => {
+				let mut allocator = SLAB_CACHES.lock();
+
+				match allocator.get_mut() {
+					Some(allocator) => unsafe {
+						allocator[index].dealloc(ptr, layout)
+					},
+					None => {
+						panic!("Heap allocator not initialized yet! Cannot deallocate.")
+					}
+				};
 			}
-		};
+			None => {
+				println_serial!(
+					"dealloc: No suitable cache found for size {}",
+					layout.size()
+				);
+				return;
+			}
+		}
 	}
+}
+
+/// Initiate the Slab Caches
+pub fn slab_cache_init() {
+	let guard = SLAB_CACHES.lock();
+
+	if guard.get().is_some() {
+		println_serial!("Slab Cache already allocated");
+		return;
+	}
+
+	guard.get_or_init(|| CACHE_SIZES.map(|size| SlabCache::new(size, 0)));
 }

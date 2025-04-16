@@ -82,11 +82,12 @@ use libc::console::console::Console;
 use macros::print;
 use memory::{
 	allocator::{
-		BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR, NODE_POOL_ALLOCATOR,
+		slab_cache_init, BUDDY_PAGE_ALLOCATOR, EARLY_PHYSICAL_ALLOCATOR,
+		NODE_POOL_ALLOCATOR,
 	},
 	buddy::BuddyAllocator,
 	memblock::{self, MemBlockAllocator},
-	node_pool, NodePoolAllocator, PAGE_SIZE,
+	node_pool, slab, NodePoolAllocator, PhysAddr, PAGE_SIZE,
 };
 use tty::{
 	log::{Logger, StatusProgram},
@@ -200,13 +201,13 @@ pub extern "C" fn kernel_main(
 			panic!("Failed to allocate node pool from MemBlock");
 		}
 
-		let pool_base_addr = ptr as usize;
+		let pool_base_addr: PhysAddr = (ptr as usize).into();
 		let node_pool_guard = NODE_POOL_ALLOCATOR.lock();
 
 		node_pool_guard.get_or_init(|| {
 			println_serial!(
 				"Initializing NodePoolAllocator at {:#x}",
-				pool_base_addr
+				pool_base_addr.as_usize()
 			);
 
 			return NodePoolAllocator::new(pool_base_addr, needed_nodes);
@@ -238,7 +239,7 @@ pub extern "C" fn kernel_main(
 
 			for region in regions.iter() {
 				if !region.is_empty() {
-					base = region.base();
+					base = region.base().into();
 					break;
 				}
 			}
@@ -249,6 +250,8 @@ pub extern "C" fn kernel_main(
 			.lock()
 			.get_or_init(|| BuddyAllocator::new(base));
 	}
+
+	slab_cache_init();
 
 	{
 		EARLY_PHYSICAL_ALLOCATOR.lock().take();
@@ -261,11 +264,18 @@ pub extern "C" fn kernel_main(
 	Logger::divider();
 	Logger::status("Memory Management", &StatusProgram::OK);
 
-	/* let test = Box::new("Hallo wereld");
-	println_serial!("{}", test);
+	let test = Box::new("Hallo Wereld");
+	println_serial!("TEST: {}", test);
 	let another_test = Box::new("cool");
 	println_serial!("{}", test);
-	println_serial!("{}", another_test); */
+	println_serial!("{}", another_test);
+
+	{
+		let test_test = Box::new("abcdef");
+		println_serial!("{}", test);
+		println_serial!("{}", another_test);
+		println_serial!("{}", test_test);
+	}
 
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();
