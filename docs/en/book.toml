@@ -1,7 +1,7 @@
 [book]
 authors = ["xannyx"]
 src = "src"
-title = "Fungul"
+title = "Ferrite"
 language = "en"
 
 [rust]

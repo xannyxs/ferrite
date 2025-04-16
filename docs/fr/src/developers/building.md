@@ -7,8 +7,8 @@ Vous aurez besoin de :
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/xannyxs/fungul
-cd fungul
+git clone https://github.com/xannyxs/ferrite
+cd ferrite
 # Lancer nix-shell
 nix-shell shell.nix --command "zsh"
 # Construire le noyau

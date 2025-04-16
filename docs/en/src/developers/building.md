@@ -7,8 +7,8 @@ You'll need:
 
 ```bash
 # Clone the repository
-git clone https://github.com/xannyxs/fungul
-cd fungul
+git clone https://github.com/xannyxs/ferrite
+cd ferrite
 
 # Initiate nix-shell
 nix-shell shell.nix --command "zsh"

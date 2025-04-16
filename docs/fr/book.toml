@@ -2,7 +2,7 @@
 authors = ["xannyx"]
 language = "fr"
 src = "src"
-title = "Fungul"
+title = "Ferrite"
 
 [rust]
 edition = "2021"
