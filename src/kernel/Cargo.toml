@@ -1,5 +1,5 @@
 [package]
-name = "fungul"
+name = "ferrite"
 version = "0.7.0"
 edition = "2021"
 build = "src/build.rs"
@@ -9,7 +9,7 @@ name = "kernel"
 path = "src/kernel.rs"
 
 [[bin]]
-name = "fungul"
+name = "ferrite"
 path = "src/bin.rs"
 
 [dependencies.lazy_static]

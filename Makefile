@@ -1,4 +1,4 @@
-BIN=$(KERNEL_DIR)/fungul.bin
+BIN=$(KERNEL_DIR)/ferrite.bin
 ISO=$(KERNEL_DIR)/kernel.iso
 
 ## Add in CLI --release to compile production code

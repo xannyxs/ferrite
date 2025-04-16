@@ -3,7 +3,7 @@
 # Build iso
 
 mkdir -p isodir/boot/grub
-cp "$1" isodir/boot/fungul.bin
+cp "$1" isodir/boot/ferrite.bin
 cp grub.cfg isodir/boot/grub/grub.cfg
 grub-mkrescue -o kernel.iso isodir
 
