@@ -227,22 +227,18 @@ pub extern "C" fn kernel_main(
 	);
 
 	{
-		let mut base = 0;
-		{
+		let base: PhysAddr = {
 			let guard = EARLY_PHYSICAL_ALLOCATOR.lock();
-			let memblock = guard.get().unwrap();
+			let memblock = guard
+				.get()
+				.expect("Failed to get memblock from early allocator");
 
-			let regions = memblock.mem_region();
-			if regions.is_empty() {
-				panic!("Not enough memory space");
-			}
-
-			for region in regions.iter() {
-				if !region.is_empty() {
-					base = region.base().into();
-					break;
-				}
-			}
+			memblock
+				.mem_region()
+				.iter()
+				.find(|&region| !region.is_empty())
+				.map(|region| region.base())
+				.expect("No non-empty memory regions available")
 		};
 
 		#[allow(clippy::implicit_return)]
@@ -264,18 +260,8 @@ pub extern "C" fn kernel_main(
 	Logger::divider();
 	Logger::status("Memory Management", &StatusProgram::OK);
 
-	let test = Box::new("Hallo Wereld");
-	println_serial!("TEST: {}", test);
-	let another_test = Box::new("cool");
-	println_serial!("{}", test);
-	println_serial!("{}", another_test);
-
-	{
-		let test_test = Box::new("abcdef");
-		println_serial!("{}", test);
-		println_serial!("{}", another_test);
-		println_serial!("{}", test_test);
-	}
+	let b = Box::new("Hello world");
+	println_serial!("{}", b);
 
 	let mut keyboard = Keyboard::default();
 	let mut console = Console::default();

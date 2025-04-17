@@ -1,9 +1,6 @@
 use super::{VirtAddr, PAGE_SIZE};
 use crate::{
-	collections::{
-		intrusive_linked_list::{IntrusiveLinkedList, IntrusiveNode},
-		linked_list::{LinkedList, Node},
-	},
+	collections::intrusive_linked_list::{IntrusiveLinkedList, IntrusiveNode},
 	memory::allocator::BUDDY_PAGE_ALLOCATOR,
 	println_serial,
 	sync::Locked,
@@ -34,6 +31,7 @@ pub struct SlabCache {
 	slab_order: usize,
 	objects_per_slab: usize,
 	// name: &'static str,
+	// lock: Spinlock
 }
 
 unsafe impl Send for SlabCache {}
@@ -85,13 +83,12 @@ impl SlabCache {
 
 			match buddy.get_mut() {
 				Some(buddy) => {
-					let pages_to_alloc = 1 << self.slab_order;
-					let size_to_alloc = pages_to_alloc * PAGE_SIZE;
-					let buddy_layout =
+					let size_to_alloc = (1 << self.slab_order) * PAGE_SIZE;
+					let layout =
 						Layout::from_size_align(size_to_alloc, PAGE_SIZE)
 							.expect("Failed to create Buddy Layout");
 
-					unsafe { buddy.alloc(buddy_layout) }
+					unsafe { buddy.alloc(layout) }
 				}
 				None => return ptr::null_mut(),
 			}
@@ -114,19 +111,17 @@ impl SlabCache {
 		let object_area_size = object_end.as_usize() - object_start.as_usize();
 
 		let objects_in_slab = object_area_size / self.object_size;
-		let first_obj_ptr = self.setup_free_list(object_start, objects_in_slab);
-		let object_to_return_nn =
-			first_obj_ptr.expect("Newly initialized slab has no free objects!");
-		let object_to_return_ptr = object_to_return_nn.as_ptr();
+		let object_to_return_ptr = self
+			.setup_free_list(object_start, objects_in_slab)
+			.expect("Newly initialized slab has no free objects!")
+			.as_ptr();
 
-		let next_free_obj_option = if objects_in_slab > 1 {
-			unsafe {
-				let next_free_raw = *(object_to_return_ptr as *const *mut u8);
-				NonNull::new(next_free_raw)
-			}
-		} else {
-			None
-		};
+		let mut next_free_obj_option = None;
+		if objects_in_slab > 1 {
+			let next_free_raw =
+				unsafe { *(object_to_return_ptr as *const *mut u8) };
+			next_free_obj_option = NonNull::new(next_free_raw);
+		}
 
 		unsafe {
 			ptr::write(
@@ -155,9 +150,51 @@ impl SlabCache {
 	}
 
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr = ptr as usize;
+		use core::ptr;
 
-		unimplemented!();
+		debug_assert!(
+			layout.size() <= self.object_size(),
+			"Layout size mismatch"
+		);
+		debug_assert!(!ptr.is_null(), "Attempted to deallocate null pointer");
+		debug_assert!(
+			self.object_size >= mem::size_of::<usize>(),
+			"Object size too small for free list link"
+		);
+
+		let addr = ptr as usize;
+		let slab_alloc_size = (1 << self.slab_order) * PAGE_SIZE;
+
+		let mask = !(slab_alloc_size - 1);
+		let slab_ptr: *mut Slab = ptr::with_exposed_provenance_mut(addr & mask);
+
+		match unsafe { slab_ptr.as_mut() } {
+			Some(slab) => {
+				let next_free_ptr_val = match slab.first_free_object {
+					Some(head) => head.as_ptr() as usize,
+					None => 0,
+				};
+
+				unsafe { (ptr as *mut usize).write(next_free_ptr_val) };
+
+				slab.first_free_object = NonNull::new(ptr);
+
+				let node_ptr = NonNull::new(ptr::addr_of_mut!(slab.list));
+				if slab.objects_in_use == self.objects_per_slab {
+					self.slabs_full.remove(node_ptr);
+					self.slabs_partial.push_back(node_ptr);
+				} else if slab.objects_in_use == 1 {
+					self.slabs_partial.remove(node_ptr);
+					self.slabs_free.push_back(node_ptr);
+				}
+
+				slab.objects_in_use -= 1;
+			}
+			None => {
+				println_serial!("ERROR: Dealloc failed - could not get slab ref at {:p} for object {:p}", slab_ptr, ptr);
+				return;
+			}
+		}
 	}
 }
 

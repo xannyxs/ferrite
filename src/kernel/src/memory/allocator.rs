@@ -56,9 +56,7 @@ unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 
 		match index {
 			Some(index) => {
-				println_serial!("Locking Slab Cache");
 				let mut allocator = SLAB_CACHES.lock();
-				println_serial!("Locked Slab Cache");
 
 				match allocator.get_mut() {
 					Some(caches) => {
