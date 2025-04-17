@@ -11,9 +11,7 @@
 // implements basic console functionality like newlines and screen clearing.
 //------------------------------------------------------------------------------
 
-use super::vga::{
-	Buffer, ColourCode, VgaChar, VgaColour, VGA_HEIGHT, VGA_WIDTH,
-};
+use super::{Buffer, ColourCode, VgaChar, VgaColour, VGA_HEIGHT, VGA_WIDTH};
 use crate::sync::Mutex;
 use core::fmt;
 use lazy_static::lazy_static;

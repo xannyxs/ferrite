@@ -2,7 +2,7 @@ use crate::{
 	arch::x86::cpu::reboot,
 	libc::console::bin::{gdt, idt},
 	print, print_serial, println, set_fg_color,
-	tty::{tty::WRITER, vga::VGA_HEIGHT},
+	tty::{tty::WRITER, VGA_HEIGHT},
 };
 use core::str::from_utf8;
 

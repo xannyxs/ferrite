@@ -116,7 +116,7 @@ unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 #[allow(clippy::implicit_return)]
 #[allow(clippy::expect_used)]
 pub fn memory_init(boot_info: &MultibootInfo) {
-	log_info!("Initialising memory");
+	log_info!("Initializing Memory Allocators");
 
 	get_memory_region(boot_info);
 
@@ -198,4 +198,5 @@ pub fn memory_init(boot_info: &MultibootInfo) {
 	}
 
 	log_debug!("Decommissioned memblock");
+	log_info!("Initialized Memory Allocators succesfully");
 }

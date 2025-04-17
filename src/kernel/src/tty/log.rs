@@ -1,6 +1,6 @@
 use crate::{
 	print, println, println_serial,
-	tty::vga::{ColourCode, VgaColour},
+	tty::{ColourCode, VgaColour},
 	with_fg_color,
 };
 use core::fmt;
