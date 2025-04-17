@@ -1,7 +1,7 @@
-use core::{
-	isize,
-	ops::{Add, Sub},
-};
+//! The PhysAddr & VirtAddr to easily convert addresses and represent their
+//! address type
+
+use core::ops::{Add, Sub};
 
 /// Represents a physical memory address, wrapping a `usize`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -14,7 +14,7 @@ impl From<usize> for PhysAddr {
 	/// Creates a `PhysAddr` directly from a `usize` value.
 	#[inline]
 	fn from(addr: usize) -> Self {
-		return PhysAddr(addr);
+		PhysAddr(addr)
 	}
 }
 
@@ -22,7 +22,7 @@ impl From<PhysAddr> for usize {
 	/// Converts a `PhysAddr` back into its underlying `usize` value.
 	#[inline]
 	fn from(pa: PhysAddr) -> Self {
-		return pa.0;
+		pa.0
 	}
 }
 
@@ -34,9 +34,7 @@ impl Add<usize> for PhysAddr {
 	#[inline]
 	#[allow(clippy::expect_used)]
 	fn add(self, rhs: usize) -> Self::Output {
-		return PhysAddr::new(
-			self.0.checked_add(rhs).expect("PhysAddr add overflow"),
-		);
+		PhysAddr::new(self.0.checked_add(rhs).expect("PhysAddr add overflow"))
 	}
 }
 
@@ -48,10 +46,9 @@ impl Sub<PhysAddr> for PhysAddr {
 	#[inline]
 	#[allow(clippy::expect_used)]
 	fn sub(self, rhs: PhysAddr) -> Self::Output {
-		return self
-			.as_usize()
+		self.as_usize()
 			.checked_sub(rhs.as_usize())
-			.expect("PhysAddr sub underflow");
+			.expect("PhysAddr sub underflow")
 	}
 }
 
@@ -62,7 +59,7 @@ impl PhysAddr {
 	#[inline]
 	#[must_use]
 	pub const fn new(addr: usize) -> Self {
-		return Self(addr);
+		Self(addr)
 	}
 
 	/// Returns the underlying `usize` representation of the physical address.
@@ -70,7 +67,7 @@ impl PhysAddr {
 	#[inline]
 	#[must_use]
 	pub const fn as_usize(self) -> usize {
-		return self.0;
+		self.0
 	}
 
 	/// Converts the physical address into a raw constant pointer of type `T`.
@@ -78,7 +75,7 @@ impl PhysAddr {
 	#[inline]
 	#[must_use]
 	pub fn as_ptr<T>(self) -> *const T {
-		return core::ptr::with_exposed_provenance(self.0);
+		core::ptr::with_exposed_provenance(self.0)
 	}
 
 	/// Converts the physical address into a raw mutable pointer of type `T`.
@@ -87,7 +84,7 @@ impl PhysAddr {
 	#[inline]
 	#[must_use]
 	pub fn as_mut_ptr<T>(self) -> *mut T {
-		return core::ptr::with_exposed_provenance_mut(self.0);
+		core::ptr::with_exposed_provenance_mut(self.0)
 	}
 
 	/// Aligns the physical address upwards to the given alignment.
@@ -103,7 +100,7 @@ impl PhysAddr {
 	where
 		U: Into<usize>,
 	{
-		return PhysAddr::new(align_up(self.0, align.into()));
+		PhysAddr::new(align_up(self.0, align.into()))
 	}
 
 	/// Aligns the physical address downwards to the given alignment.
@@ -114,7 +111,7 @@ impl PhysAddr {
 	where
 		U: Into<usize>,
 	{
-		return self.align_down_usize(align.into());
+		self.align_down_usize(align.into())
 	}
 
 	/// Aligns the physical address downwards to the given alignment.
@@ -122,7 +119,7 @@ impl PhysAddr {
 	/// See the `align_down` function for more information.
 	#[inline]
 	pub(crate) const fn align_down_usize(self, align: usize) -> Self {
-		return PhysAddr(align_down(self.0, align));
+		PhysAddr(align_down(self.0, align))
 	}
 
 	/// Checks whether the physical address has the demanded alignment.
@@ -131,13 +128,13 @@ impl PhysAddr {
 	where
 		U: Into<usize>,
 	{
-		return self.is_aligned_usize(align.into());
+		self.is_aligned_usize(align.into())
 	}
 
 	/// Checks whether the physical address has the demanded alignment.
 	#[inline]
 	pub(crate) const fn is_aligned_usize(self, align: usize) -> bool {
-		return self.align_down_usize(align).as_usize() == self.as_usize();
+		self.align_down_usize(align).as_usize() == self.as_usize()
 	}
 }
 
@@ -155,7 +152,7 @@ impl From<usize> for VirtAddr {
 	#[inline]
 	fn from(addr: usize) -> Self {
 		// TODO: Consider adding checks for canonical address range if needed
-		return VirtAddr(addr);
+		VirtAddr(addr)
 	}
 }
 
@@ -163,7 +160,7 @@ impl From<VirtAddr> for usize {
 	/// Converts a `VirtAddr` back into its underlying `usize` value.
 	#[inline]
 	fn from(va: VirtAddr) -> Self {
-		return va.0;
+		va.0
 	}
 }
 
@@ -175,9 +172,7 @@ impl Add<usize> for VirtAddr {
 	#[inline]
 	#[allow(clippy::expect_used)]
 	fn add(self, rhs: usize) -> Self::Output {
-		return VirtAddr::new(
-			self.0.checked_add(rhs).expect("VirtAddr add overflow"),
-		);
+		VirtAddr::new(self.0.checked_add(rhs).expect("VirtAddr add overflow"))
 	}
 }
 
@@ -189,10 +184,9 @@ impl Sub<VirtAddr> for VirtAddr {
 	#[inline]
 	#[allow(clippy::expect_used)]
 	fn sub(self, rhs: VirtAddr) -> Self::Output {
-		return self
-			.as_usize()
+		self.as_usize()
 			.checked_sub(rhs.as_usize())
-			.expect("VirtAddr sub underflow");
+			.expect("VirtAddr sub underflow")
 	}
 }
 
@@ -204,7 +198,7 @@ impl VirtAddr {
 	#[must_use]
 	pub const fn new(addr: usize) -> VirtAddr {
 		// TODO: Consider adding checks for canonical address range if needed
-		return VirtAddr(addr);
+		VirtAddr(addr)
 	}
 
 	/// Creates a new canonical virtual address, throwing out bits 24..32.
@@ -215,14 +209,14 @@ impl VirtAddr {
 	/// [`try_new`](Self::try_new).
 	#[inline]
 	pub const fn new_truncate(addr: usize) -> VirtAddr {
-		return VirtAddr(((addr << 8) as isize >> 8) as usize);
+		VirtAddr(((addr << 8) as isize >> 8) as usize)
 	}
 
 	/// Returns the underlying `usize` representation of the virtual address.
 	#[inline]
 	#[must_use]
 	pub const fn as_usize(self) -> usize {
-		return self.0;
+		self.0
 	}
 
 	/// Converts the virtual address into a raw constant pointer of type `T`.
@@ -230,7 +224,7 @@ impl VirtAddr {
 	#[inline]
 	#[must_use]
 	pub fn as_ptr<T>(self) -> *const T {
-		return core::ptr::with_exposed_provenance(self.0);
+		core::ptr::with_exposed_provenance(self.0)
 	}
 
 	/// Aligns the virtual address upwards to the given alignment.
@@ -248,7 +242,7 @@ impl VirtAddr {
 	{
 		let aligned_addr = align_up(self.0, align.into());
 
-		return VirtAddr::new(aligned_addr);
+		VirtAddr::new(aligned_addr)
 	}
 
 	/// Aligns the virtual address downwards to the given alignment.
@@ -259,7 +253,7 @@ impl VirtAddr {
 	where
 		U: Into<usize>,
 	{
-		return self.align_down_usize(align.into());
+		self.align_down_usize(align.into())
 	}
 
 	/// Converts the virtual address into a raw mutable pointer of type `T`.
@@ -267,7 +261,7 @@ impl VirtAddr {
 	#[inline]
 	#[must_use]
 	pub fn as_mut_ptr<T>(self) -> *mut T {
-		return core::ptr::with_exposed_provenance_mut(self.0);
+		core::ptr::with_exposed_provenance_mut(self.0)
 	}
 
 	/// Aligns the virtual address downwards to the given alignment.
@@ -275,7 +269,7 @@ impl VirtAddr {
 	/// See the `align_down` function for more information.
 	#[inline]
 	pub(crate) const fn align_down_usize(self, align: usize) -> Self {
-		return VirtAddr::new_truncate(align_down(self.0, align));
+		VirtAddr::new_truncate(align_down(self.0, align))
 	}
 
 	/// Checks whether the virtual address has the demanded alignment.
@@ -284,13 +278,13 @@ impl VirtAddr {
 	where
 		U: Into<usize>,
 	{
-		return self.is_aligned_usize(align.into());
+		self.is_aligned_usize(align.into())
 	}
 
 	/// Checks whether the virtual address has the demanded alignment.
 	#[inline]
 	pub(crate) const fn is_aligned_usize(self, align: usize) -> bool {
-		return self.align_down_usize(align).as_usize() == self.as_usize();
+		self.align_down_usize(align).as_usize() == self.as_usize()
 	}
 }
 
@@ -302,7 +296,7 @@ impl VirtAddr {
 #[inline]
 pub const fn align_down(addr: usize, align: usize) -> usize {
 	assert!(align.is_power_of_two(), "`align` must be a power of two");
-	return addr & !(align - 1);
+	addr & !(align - 1)
 }
 
 /// Align address upwards.
@@ -315,11 +309,11 @@ pub const fn align_up(addr: usize, align: usize) -> usize {
 	assert!(align.is_power_of_two(), "`align` must be a power of two");
 	let align_mask = align - 1;
 	if addr & align_mask == 0 {
-		return addr; // already aligned
+		addr // already aligned
 	} else {
 		// FIXME: Replace with .expect, once `Option::expect` is const.
 		if let Some(aligned) = (addr | align_mask).checked_add(1) {
-			return aligned;
+			aligned
 		} else {
 			panic!("attempt to add with overflow")
 		}

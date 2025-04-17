@@ -3,9 +3,9 @@ use core::panic::PanicInfo;
 
 #[cfg(not(test))]
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
 	with_fg_color!(VgaColour::Red, {
-		println!("{}", _info);
+		println!("{}", info);
 	});
 
 	loop {}

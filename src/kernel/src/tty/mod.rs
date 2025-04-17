@@ -1,6 +1,7 @@
 /// Impl of the WRITER function to write to the VGA
 pub mod tty;
 
+/// A simple log function
 pub mod log;
 
 /// Consts & Structs to setup a valid VGA

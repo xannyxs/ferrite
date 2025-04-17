@@ -1,15 +1,23 @@
+//! Implements a physical memory allocator using the buddy system algorithm.
+
 use super::{
 	allocator::EARLY_PHYSICAL_ALLOCATOR, memblock::MemRegion,
 	node_pool::NodeAllocatorWrapper, MemorySegment, PhysAddr, PAGE_SIZE,
 };
 use crate::{
 	arch::x86::multiboot::G_SEGMENTS, collections::linked_list::LinkedList,
-	memory::NodePoolAllocator, println_serial, sync::Locked,
+	memory::NodePoolAllocator, println_serial,
 };
 use core::{alloc::Layout, ptr};
 
 const MAX_ORDERS: usize = 32;
 
+/// Manages physical memory allocation using a buddy system with power-of-two
+/// block sizes.
+///
+/// Tracks free blocks using linked lists for each size order and a bitmap
+/// (`map`) to mark allocated/free status of the smallest block size
+/// (`min_block_size`).
 pub struct BuddyAllocator {
 	base: PhysAddr,
 	size: usize,
@@ -23,7 +31,24 @@ unsafe impl Send for BuddyAllocator {}
 unsafe impl Sync for BuddyAllocator {}
 
 impl BuddyAllocator {
-	/// Creates a new BuddyAllocator.
+	/// Creates and initializes a new `BuddyAllocator`.
+	///
+	/// Calculates the required size based on `G_SEGMENTS`, determines the
+	/// necessary orders, allocates memory for the internal tracking bitmap
+	/// using the `EARLY_PHYSICAL_ALLOCATOR`, and initializes the free lists
+	/// with the largest initial block(s).
+	///
+	/// # Arguments
+	///
+	/// * `base`: The starting physical address of the memory region to manage.
+	///
+	/// # Panics
+	///
+	/// Panics if the early physical allocator is unavailable, fails to allocate
+	/// memory for the bitmap, or if layout calculation fails. It also panics
+	/// if `G_SEGMENTS` is not properly initialized or accessible.
+	// NOTE: Keeping expect_used allow as panicking on init failure is common.
+	#[allow(clippy::expect_used)]
 	pub fn new(base: PhysAddr) -> Self {
 		use core::mem::{align_of, size_of};
 
@@ -48,20 +73,17 @@ impl BuddyAllocator {
 		let bitmap_words = bitmap_bytes.div_ceil(size_of::<usize>());
 		let bitmap_size = bitmap_words * size_of::<usize>();
 
-		#[allow(clippy::expect_used)]
-		let bitmap_layout = Layout::from_size_align(bitmap_size, align_of::<usize>())
-			.expect("Error while creating the Buddy Allocation Layout");
+		let bitmap_layout =
+			Layout::from_size_align(bitmap_size, align_of::<usize>())
+				.expect("Error while creating the Buddy Allocation Layout");
 
-		let bitmap_ptr;
-		{
-			let mut early_alloc = EARLY_PHYSICAL_ALLOCATOR.lock();
-			bitmap_ptr = unsafe {
-				match early_alloc.get_mut() {
-					Some(allocator) => allocator.alloc(bitmap_layout),
-					None => panic!("Could not access early physical allocator"),
-				}
-			};
-		}
+		let bitmap_ptr: *mut u8 = unsafe {
+			EARLY_PHYSICAL_ALLOCATOR
+				.lock()
+				.get_mut()
+				.expect("Could not access early physical allocator")
+				.alloc(bitmap_layout)
+		};
 
 		if bitmap_ptr.is_null() {
 			panic!("Failed to allocate memory for buddy allocator bitmap");
@@ -85,27 +107,52 @@ impl BuddyAllocator {
 			free_lists[max_order].push_back(base);
 		}
 
-		return Self {
+		Self {
 			base,
 			size,
 			min_block_size,
 			max_order,
 			free_lists,
 			map,
-		};
-	}
-
-	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-		match self.find_free_block(layout) {
-			Some(block_addr) => {
-				return ptr::with_exposed_provenance_mut(block_addr.as_usize());
-			}
-			None => {
-				return ptr::null_mut();
-			}
 		}
 	}
 
+	/// Allocates a block of physical memory satisfying the given `layout`.
+	///
+	/// Finds the smallest suitable free block using the buddy system, splits
+	/// larger blocks if necessary, marks the block as allocated in the bitmap,
+	/// and returns a pointer to the start of the allocated block.
+	///
+	/// # Safety
+	///
+	/// The caller receives a raw pointer to physical memory which is not
+	/// automatically zeroed. The caller must ensure correct usage and
+	/// alignment handling if needed beyond what the `layout` specifies (though
+	/// this allocator respects layout alignment).
+	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
+		match self.find_free_block(layout) {
+			Some(block_addr) => {
+				ptr::with_exposed_provenance_mut(block_addr.as_usize())
+			}
+			None => ptr::null_mut(),
+		}
+	}
+
+	/// Deallocates a previously allocated block of physical memory.
+	///
+	/// Marks the block associated with `ptr` and `layout` as free in the
+	/// bitmap. Attempts to merge the freed block with its buddy if the buddy
+	/// is also free, repeating the merge process for larger blocks if
+	/// possible. The resulting free block (original or merged) is added to the
+	/// appropriate free list.
+	///
+	/// # Safety
+	///
+	/// The caller *must* ensure that `ptr` was previously returned by a call to
+	/// `alloc` on *this* allocator instance with the *exact same* `layout`.
+	/// Deallocating with an incorrect `layout`, freeing the same block twice,
+	/// or freeing a pointer not allocated by this allocator results in
+	/// undefined behavior.
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
 		let addr = (ptr as usize).into();
 
@@ -172,7 +219,7 @@ impl BuddyAllocator {
 		let block_size = self.min_block_size * (1 << order);
 		let buddy_relative_addr = (addr - self.base) ^ block_size;
 
-		return self.base + buddy_relative_addr;
+		self.base + buddy_relative_addr
 	}
 
 	/// Finds a free block of memory of the requested size.
@@ -212,12 +259,12 @@ impl BuddyAllocator {
 
 		self.mark_allocated(block_addr, required_order);
 
-		return Some(block_addr);
+		Some(block_addr)
 	}
 
 	#[inline(always)]
 	fn get_block_index(&self, addr: PhysAddr) -> usize {
-		return (addr - self.base) / self.min_block_size;
+		(addr - self.base) / self.min_block_size
 	}
 
 	fn mark_allocated(&mut self, addr: PhysAddr, order: usize) {
@@ -270,6 +317,6 @@ impl BuddyAllocator {
 			}
 		}
 
-		return true;
+		true
 	}
 }

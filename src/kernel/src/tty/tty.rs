@@ -14,7 +14,7 @@
 use super::vga::{
 	Buffer, ColourCode, VgaChar, VgaColour, VGA_HEIGHT, VGA_WIDTH,
 };
-use crate::Mutex;
+use crate::sync::Mutex;
 use core::fmt;
 use lazy_static::lazy_static;
 
