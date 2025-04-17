@@ -11,11 +11,11 @@ use core::{alloc::Layout, ptr};
 const MAX_ORDERS: usize = 32;
 
 pub struct BuddyAllocator {
-	base: usize,
+	base: PhysAddr,
 	size: usize,
 	min_block_size: usize,
 	max_order: usize,
-	free_lists: [LinkedList<usize, NodeAllocatorWrapper>; MAX_ORDERS],
+	free_lists: [LinkedList<PhysAddr, NodeAllocatorWrapper>; MAX_ORDERS],
 	map: &'static mut [usize],
 }
 
@@ -24,7 +24,7 @@ unsafe impl Sync for BuddyAllocator {}
 
 impl BuddyAllocator {
 	/// Creates a new BuddyAllocator.
-	pub fn new(base: usize) -> Self {
+	pub fn new(base: PhysAddr) -> Self {
 		use core::mem::{align_of, size_of};
 
 		let mut size = 0;
@@ -32,7 +32,7 @@ impl BuddyAllocator {
 			size += segment.size();
 		}
 
-		size -= base;
+		size -= base.as_usize();
 
 		let min_block_size = PAGE_SIZE;
 		let blocks_count = size / min_block_size;
@@ -77,7 +77,7 @@ impl BuddyAllocator {
 			*word = 0;
 		}
 
-		const EMPTY_LIST: LinkedList<usize, NodeAllocatorWrapper> =
+		const EMPTY_LIST: LinkedList<PhysAddr, NodeAllocatorWrapper> =
 			LinkedList::new_in(NodeAllocatorWrapper);
 		let mut free_lists = [EMPTY_LIST; MAX_ORDERS];
 
@@ -107,7 +107,7 @@ impl BuddyAllocator {
 	}
 
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr = ptr as usize;
+		let addr = (ptr as usize).into();
 
 		let i = self.get_block_index(addr);
 		let required_size = layout.size().max(layout.align());
@@ -142,7 +142,7 @@ impl BuddyAllocator {
 	}
 
 	/// Panics on error
-	fn remove_from_free_list(&mut self, addr: usize, order: usize) {
+	fn remove_from_free_list(&mut self, addr: PhysAddr, order: usize) {
 		if order >= MAX_ORDERS {
 			panic!("Invalid order {} provided to remove_from_free_list", order);
 		}
@@ -163,12 +163,12 @@ impl BuddyAllocator {
 
 		panic!(
         "Failed to remove address {:#x} from free_list[{}]: address not found in list!",
-        addr, order
+        addr.as_usize(), order
     );
 	}
 
 	#[inline(always)]
-	fn find_buddy_addr(&self, addr: usize, order: usize) -> usize {
+	fn find_buddy_addr(&self, addr: PhysAddr, order: usize) -> PhysAddr {
 		let block_size = self.min_block_size * (1 << order);
 		let buddy_relative_addr = (addr - self.base) ^ block_size;
 
@@ -199,13 +199,13 @@ impl BuddyAllocator {
 			return None;
 		}
 
-		let block_addr: PhysAddr = self.free_lists[k].pop_back()?.into();
+		let block_addr = self.free_lists[k].pop_back()?;
 
 		while k > required_order {
 			let buddy_offset = self.min_block_size * (1 << (k - 1));
 			let buddy_addr = block_addr + buddy_offset;
 
-			self.free_lists[k - 1].push_back(buddy_addr.as_usize());
+			self.free_lists[k - 1].push_back(buddy_addr);
 
 			k -= 1;
 		}
@@ -216,12 +216,12 @@ impl BuddyAllocator {
 	}
 
 	#[inline(always)]
-	fn get_block_index(&self, addr: usize) -> usize {
+	fn get_block_index(&self, addr: PhysAddr) -> usize {
 		return (addr - self.base) / self.min_block_size;
 	}
 
 	fn mark_allocated(&mut self, addr: PhysAddr, order: usize) {
-		let i = (addr.as_usize() - self.base) / self.min_block_size;
+		let i = (addr - self.base) / self.min_block_size;
 
 		let blocks_to_mark = 1 << order;
 

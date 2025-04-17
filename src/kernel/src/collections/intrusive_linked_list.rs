@@ -1,5 +1,4 @@
 use core::{
-	borrow::{Borrow, BorrowMut},
 	marker::PhantomData,
 	ptr::{self, NonNull},
 };
@@ -76,6 +75,12 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 		return self.head.is_none();
 	}
 
+	#[inline]
+	#[allow(clippy::unwrap_used)]
+	pub fn remove(&mut self, ptr: Option<NonNull<IntrusiveNode<T>>>) {
+		return unsafe { self.remove_node(ptr.unwrap()) };
+	}
+
 	pub fn pop_front(&mut self) -> Option<NonNull<IntrusiveNode<T>>> {
 		return self.pop_front_node();
 	}
@@ -125,6 +130,36 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 
 // Private Interface
 impl<T: ?Sized> IntrusiveLinkedList<T> {
+	unsafe fn remove_node(&mut self, mut node_ptr: NonNull<IntrusiveNode<T>>) {
+		let node = unsafe { node_ptr.as_mut() };
+
+		let prev_node_opt = node.prev;
+		let next_node_opt = node.next;
+
+		if let Some(mut next_node_ptr) = next_node_opt {
+			let next_node = unsafe { next_node_ptr.as_mut() };
+			next_node.prev = prev_node_opt;
+		}
+
+		if let Some(mut prev_node_ptr) = prev_node_opt {
+			let prev_node = unsafe { prev_node_ptr.as_mut() };
+			prev_node.next = next_node_opt;
+		}
+
+		if self.head == Some(node_ptr) {
+			self.head = next_node_opt;
+		}
+
+		if self.tail == Some(node_ptr) {
+			self.tail = prev_node_opt;
+		}
+
+		self.len -= 1;
+
+		node.prev = None;
+		node.next = None;
+	}
+
 	fn pop_front_node(&mut self) -> Option<NonNull<IntrusiveNode<T>>> {
 		let mut popped_node_ptr: NonNull<IntrusiveNode<T>> =
 			self.head.take()?;
