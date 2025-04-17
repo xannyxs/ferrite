@@ -15,15 +15,17 @@ pub mod memblock;
 pub mod node_pool;
 pub mod paging;
 pub mod slab;
-pub mod transition;
 
 pub use addr::{PhysAddr, VirtAddr};
+pub use buddy::BuddyAllocator;
+pub use memblock::MemBlockAllocator;
 pub use node_pool::NodePoolAllocator;
 pub use paging::Mapper;
+pub use slab::SlabCache;
 
 /* -------------------------------------- */
 
-/// Defines the system's page size (typically 4 KiB on x86_64).
+/// Defines the system's page size
 pub const PAGE_SIZE: usize = 4096;
 
 #[repr(u32)]

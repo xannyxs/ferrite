@@ -4,3 +4,5 @@ pub mod colour;
 pub mod print;
 /// Serial Macros
 pub mod serial;
+// Log Macros
+pub mod log;

@@ -2,7 +2,7 @@
 #[macro_export]
 macro_rules! set_fg_color {
 	($colour:expr) => {{
-		use $crate::tty::{tty::WRITER, vga::VgaColour};
+		use $crate::tty::{tty::WRITER, VgaColour};
 		WRITER.lock().colour_code.set_foreground_colour($colour);
 	}};
 }
@@ -11,7 +11,7 @@ macro_rules! set_fg_color {
 #[macro_export]
 macro_rules! set_bg_color {
 	($colour:expr) => {{
-		use $crate::tty::{tty::WRITER, vga::VgaColour};
+		use $crate::tty::{tty::WRITER, VgaColour};
 		WRITER.lock().colour_code.set_background_colour($colour);
 	}};
 }
@@ -20,7 +20,7 @@ macro_rules! set_bg_color {
 #[macro_export]
 macro_rules! with_fg_color {
     ($colour:expr, $($code:tt)*) => {{
-        use $crate::tty::{tty::WRITER, vga::VgaColour};
+        use $crate::tty::{tty::WRITER, VgaColour};
         let original = WRITER.lock().colour_code.get_foreground_colour();
         WRITER.lock().colour_code.set_foreground_colour($colour);
         let result = { $($code)* };
@@ -33,7 +33,7 @@ macro_rules! with_fg_color {
 #[macro_export]
 macro_rules! with_bg_color {
     ($colour:expr, $($code:tt)*) => {{
-        use $crate::tty::{tty::WRITER, vga::VgaColour};
+        use $crate::tty::{tty::WRITER, VgaColour};
         let original = WRITER.lock().colour_code.get_background_colour();
         WRITER.lock().colour_code.set_background_colour($colour);
         let result = { $($code)* };
@@ -46,7 +46,7 @@ macro_rules! with_bg_color {
 #[macro_export]
 macro_rules! with_colors {
     ($fg:expr, $bg:expr, $($code:tt)*) => {{
-        use $crate::tty::{tty::WRITER, vga::VgaColour};
+        use $crate::tty::{tty::WRITER, VgaColour};
         let original_fg = WRITER.lock().colour_code.get_foreground_colour();
         let original_bg = WRITER.lock().colour_code.get_background_colour();
         WRITER.lock().colour_code.set_foreground_colour($fg);

@@ -1,8 +1,16 @@
+//! Defines an intrusive doubly linked list implementation.
+//! Nodes (`IntrusiveNode`) are embedded within the structs they link (`T`).
+
 use core::{
 	marker::PhantomData,
 	ptr::{self, NonNull},
 };
 
+/// A node embeddable within a struct `T` to make `T` usable in an
+/// `IntrusiveLinkedList`.
+///
+/// Contains previous/next pointers for list membership and an optional non-null
+/// pointer back to the containing struct `T`.
 #[derive(Debug)]
 pub struct IntrusiveNode<T: ?Sized> {
 	container: Option<NonNull<T>>,
@@ -14,18 +22,20 @@ pub struct IntrusiveNode<T: ?Sized> {
 impl<T: ?Sized> Default for IntrusiveNode<T> {
 	#[inline]
 	fn default() -> Self {
-		return Self::new(None);
+		Self::new(None)
 	}
 }
 
 impl<T: ?Sized> IntrusiveNode<T> {
+	/// Creates a new `IntrusiveNode` with optional pointer back to its
+	/// container. Links (`next`/`prev`) are initialized to `None`.
 	pub const fn new(container: Option<NonNull<T>>) -> Self {
-		return Self {
+		Self {
 			container,
 			next: None,
 			prev: None,
 			_marker: PhantomData,
-		};
+		}
 	}
 
 	/// Returns an optional shared reference to the container struct (`T`)
@@ -52,6 +62,11 @@ impl<T: ?Sized> IntrusiveNode<T> {
 	}
 }
 
+/// An intrusive doubly linked list manager.
+///
+/// It holds pointers to the head and tail nodes (`IntrusiveNode<T>`) and the
+/// list length. It does *not* own the nodes themselves; the nodes must be
+/// embedded within other structs (`T`).
 pub struct IntrusiveLinkedList<T: ?Sized> {
 	head: Option<NonNull<IntrusiveNode<T>>>,
 	tail: Option<NonNull<IntrusiveNode<T>>>,
@@ -60,69 +75,106 @@ pub struct IntrusiveLinkedList<T: ?Sized> {
 
 // Public Interface
 impl<T: ?Sized> IntrusiveLinkedList<T> {
+	/// Creates a new, empty `IntrusiveLinkedList`.
 	pub const fn new() -> Self {
-		return Self {
+		Self {
 			head: None,
 			tail: None,
 			len: 0,
-		};
+		}
 	}
 
 	/// Returns `true` if the `LinkedList` is empty.
 	#[inline]
 	#[must_use]
 	pub fn is_empty(&self) -> bool {
-		return self.head.is_none();
+		self.head.is_none()
 	}
 
+	/// Removes the specified node from the list (safe wrapper).
+	///
+	/// # Arguments
+	/// * `ptr`: An `Option` containing a `NonNull` pointer to the
+	///   `IntrusiveNode` to remove.
+	///
+	/// # Panics
+	/// Panics if `ptr` is `None`. The underlying `remove_node` has safety
+	/// requirements.
+	///
+	/// # Safety
+	/// The caller must ensure the `ptr` (if Some) points to a valid node
+	/// *currently in this list*. See `remove_node` for detailed safety
+	/// requirements.
 	#[inline]
 	#[allow(clippy::unwrap_used)]
 	pub fn remove(&mut self, ptr: Option<NonNull<IntrusiveNode<T>>>) {
-		return unsafe { self.remove_node(ptr.unwrap()) };
+		unsafe { self.remove_node(ptr.unwrap()) }
 	}
 
+	/// Pushes the specified node onto the front of the list (safe wrapper).
+	///
+	/// # Arguments
+	/// * `ptr`: An `Option` containing a `NonNull` pointer to the
+	///   `IntrusiveNode` to push.
+	///
+	/// # Panics
+	/// Panics if `ptr` is `None`. The underlying `push_front_node` has safety
+	/// requirements.
+	///
+	/// # Safety
+	/// The caller must ensure the `ptr` (if Some) points to a valid node *not
+	/// currently in any list*. See `push_front_node` for detailed safety
+	/// requirements.
 	pub fn pop_front(&mut self) -> Option<NonNull<IntrusiveNode<T>>> {
-		return self.pop_front_node();
+		self.pop_front_node()
 	}
 
+	/// Pushes the specified node onto the back of the list (safe wrapper).
+	///
+	/// # Arguments
+	/// * `ptr`: An `Option` containing a `NonNull` pointer to the
+	///   `IntrusiveNode` to push.
+	///
+	/// # Panics
+	/// Panics if `ptr` is `None`. The underlying `push_back_node` has safety
+	/// requirements.
+	///
+	/// # Safety
+	/// The caller must ensure the `ptr` (if Some) points to a valid node *not
+	/// currently in any list*. See `push_back_node` for detailed safety
+	/// requirements.
 	#[allow(clippy::unwrap_used)]
 	pub fn push_front(&mut self, ptr: Option<NonNull<IntrusiveNode<T>>>) {
 		unsafe { self.push_front_node(ptr.unwrap()) };
 	}
 
+	/// Returns an optional shared reference to the first node in the list.
 	pub fn pop_back(&mut self) -> Option<NonNull<IntrusiveNode<T>>> {
-		return self.pop_back_node();
+		self.pop_back_node()
 	}
 
+	/// Returns an optional mutable reference to the first node in the list.
 	#[allow(clippy::unwrap_used)]
 	pub fn push_back(&mut self, ptr: Option<NonNull<IntrusiveNode<T>>>) {
 		unsafe { self.push_back_node(ptr.unwrap()) };
 	}
 
-	/// Returns a reference to the first element in the list, or None if the
-	/// list is empty.
-	#[allow(clippy::implicit_return)]
+	/// Returns an optional shared reference to the first node in the list.
 	pub fn front(&self) -> Option<&IntrusiveNode<T>> {
 		self.head.map(|node_ptr| unsafe { node_ptr.as_ref() })
 	}
 
-	/// Returns a mutable reference to the first element in the list, or None if
-	/// the list is empty.
-	#[allow(clippy::implicit_return)]
+	/// Returns an optional shared reference to the last node in the list.
 	pub fn front_mut(&mut self) -> Option<&mut IntrusiveNode<T>> {
 		self.head.map(|mut node_ptr| unsafe { node_ptr.as_mut() })
 	}
 
-	/// Returns a reference to the last element in the list, or None if the list
-	/// is empty.
-	#[allow(clippy::implicit_return)]
+	/// Returns an optional shared reference to the last node in the list.
 	pub fn back(&self) -> Option<&IntrusiveNode<T>> {
 		self.tail.map(|node_ptr| unsafe { node_ptr.as_ref() })
 	}
 
-	/// Returns a mutable reference to the last element in the list, or None if
-	/// the list is empty.
-	#[allow(clippy::implicit_return)]
+	/// Returns an optional mutable reference to the last node in the list.
 	pub fn back_mut(&mut self) -> Option<&mut IntrusiveNode<T>> {
 		self.tail.map(|mut node_ptr| unsafe { node_ptr.as_mut() })
 	}
@@ -179,7 +231,7 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 		popped_node.prev = None;
 		self.len -= 1;
 
-		return Some(popped_node_ptr);
+		Some(popped_node_ptr)
 	}
 
 	/// Pushes a node (via NonNull pointer to its IntrusiveNode) onto the front
@@ -232,7 +284,7 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 		popped_node.next = None;
 		self.len -= 1;
 
-		return Some(popped_node_ptr);
+		Some(popped_node_ptr)
 	}
 
 	/// Pushes a node (via NonNull pointer to its IntrusiveNode) onto the front

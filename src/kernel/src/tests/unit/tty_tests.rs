@@ -1,11 +1,7 @@
 use crate::{
 	println, println_serial,
-	tty::{
-		tty::WRITER,
-		vga::{Buffer, ColourCode, VgaColour, VGA_HEIGHT, VGA_WIDTH},
-	},
+	tty::{tty::WRITER, Buffer, ColourCode, VgaColour, VGA_HEIGHT, VGA_WIDTH},
 };
-use core::fmt::Write;
 
 #[test_case]
 fn test_println_simple() {

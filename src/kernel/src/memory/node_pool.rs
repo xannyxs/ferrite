@@ -1,3 +1,7 @@
+//! Provides a fixed-size pool allocator (`NodePoolAllocator`) for linked list
+//! nodes and a safe wrapper (`NodeAllocatorWrapper`) implementing the
+//! `Allocator` trait.
+
 use super::{allocator::NODE_POOL_ALLOCATOR, PhysAddr};
 use crate::{
 	collections::linked_list::Node,

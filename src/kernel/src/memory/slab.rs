@@ -1,6 +1,9 @@
+//! Implements a slab allocator for fixed-size memory allocations.
+
 use super::{VirtAddr, PAGE_SIZE};
 use crate::{
 	collections::intrusive_linked_list::{IntrusiveLinkedList, IntrusiveNode},
+	log_error,
 	memory::allocator::BUDDY_PAGE_ALLOCATOR,
 	println_serial,
 	sync::Locked,
@@ -15,13 +18,14 @@ use core::{
 #[derive(Debug)]
 struct Slab {
 	list: IntrusiveNode<Slab>,
-
 	cache: *const SlabCache,
 	base_vaddr: VirtAddr,
 	objects_in_use: usize,
 	first_free_object: Option<NonNull<u8>>,
 }
 
+/// Represents a single slab of memory containing multiple fixed-size objects.
+/// This struct itself resides at the beginning of the allocated slab memory.
 pub struct SlabCache {
 	slabs_full: IntrusiveLinkedList<Slab>,
 	slabs_partial: IntrusiveLinkedList<Slab>,
@@ -39,26 +43,31 @@ unsafe impl Sync for SlabCache {}
 
 unsafe impl GlobalAlloc for Locked<SlabCache> {
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		let mut allocator = self.lock();
-
-		unsafe {
-			return allocator.alloc(layout);
-		}
+		unsafe { self.lock().alloc(layout) }
 	}
 
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		let mut allocator = self.lock();
-
-		unsafe { allocator.dealloc(ptr, layout) }
+		unsafe { self.lock().dealloc(ptr, layout) }
 	}
 }
 
 // Allocations
 impl SlabCache {
+	/// Allocates one object from this slab cache.
+	///
+	/// Attempts to reuse an object from a partially full or free slab.
+	/// If none are available, allocates a new slab from the underlying
+	/// Buddy Allocator and returns the first object.
+	///
+	/// # Safety
+	/// The caller receives a raw pointer to uninitialized memory. The layout
+	/// size must be appropriate for this cache (<= `self.object_size`). This
+	/// function assumes exclusive mutable access (`&mut self`).
+	#[allow(clippy::expect_used)]
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		use core::ptr;
 
-		assert!(layout.size() <= self.object_size());
+		assert!(layout.size() <= self.object_size);
 
 		if !self.slabs_partial.is_empty() {
 			match self.slabs_partial.pop_front() {
@@ -146,14 +155,27 @@ impl SlabCache {
 
 		self.slabs_partial.push_back(NonNull::new(node_ptr));
 
-		return object_to_return_ptr;
+		object_to_return_ptr
 	}
 
+	/// Deallocates an object previously allocated from this slab cache.
+	///
+	/// Finds the slab containing the `ptr`, adds the object back to the slab's
+	/// internal free list, decrements the usage count, and moves the slab
+	/// between the `slabs_full`, `slabs_partial`, and `slabs_free` lists
+	/// as appropriate.
+	///
+	/// # Safety
+	/// The caller *must* ensure that `ptr` points to a valid object previously
+	/// allocated from *this specific `SlabCache` instance* with a compatible
+	/// `layout`. Double-freeing or freeing a pointer not belonging to this
+	/// cache leads to undefined behavior. Assumes exclusive mutable access
+	/// (`&mut self`).
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
 		use core::ptr;
 
 		debug_assert!(
-			layout.size() <= self.object_size(),
+			layout.size() <= self.object_size,
 			"Layout size mismatch"
 		);
 		debug_assert!(!ptr.is_null(), "Attempted to deallocate null pointer");
@@ -191,8 +213,11 @@ impl SlabCache {
 				slab.objects_in_use -= 1;
 			}
 			None => {
-				println_serial!("ERROR: Dealloc failed - could not get slab ref at {:p} for object {:p}", slab_ptr, ptr);
-				return;
+				log_error!(
+					"Could not get slab ref at {:p} for object {:p}",
+					slab_ptr,
+					ptr
+				);
 			}
 		}
 	}
@@ -200,6 +225,15 @@ impl SlabCache {
 
 // Public Interface
 impl SlabCache {
+	/// Creates a new `SlabCache` for objects of `size` bytes.
+	///
+	/// Calculates the number of objects fitting in a slab based on the
+	/// `slab_order` (which determines the total slab size = `PAGE_SIZE` <<
+	/// `slab_order`).
+	///
+	/// # Panics
+	/// Panics if the calculated slab size is too small to hold even one object
+	/// plus the required `Slab` metadata.
 	pub fn new(size: usize, slab_order: usize) -> Self {
 		let object_align = mem::align_of::<usize>();
 		let metadata_size = mem::size_of::<Slab>();
@@ -217,18 +251,14 @@ impl SlabCache {
 			panic!("Slab order {} is too small for object size {} with on-slab metadata!", slab_order, size);
 		}
 
-		return Self {
+		Self {
 			slabs_full: IntrusiveLinkedList::new(),
 			slabs_partial: IntrusiveLinkedList::new(),
 			slabs_free: IntrusiveLinkedList::new(),
 			object_size: size,
 			slab_order,
 			objects_per_slab,
-		};
-	}
-
-	pub const fn object_size(&self) -> usize {
-		return self.object_size;
+		}
 	}
 }
 
@@ -242,12 +272,6 @@ impl SlabCache {
 		use core::ptr;
 
 		if count == 0 || self.object_size < mem::size_of::<*mut u8>() {
-			println_serial!(
-                "setup_free_list: Returning None! count={}, object_size={}, pointer_size={}",
-                count,
-                self.object_size,
-                mem::size_of::<*mut u8>()
-            );
 			return None;
 		}
 
@@ -262,11 +286,9 @@ impl SlabCache {
 		}
 
 		unsafe { ptr::write(current_ptr as *mut usize, 0) };
-		return NonNull::new(start.as_mut_ptr::<u8>());
+		NonNull::new(start.as_mut_ptr::<u8>())
 	}
 
-	#[allow(clippy::unwrap_used)]
-	#[allow(clippy::expect_used)]
 	fn add_object(
 		&mut self,
 		mut popped_node: NonNull<IntrusiveNode<Slab>>,
@@ -289,6 +311,6 @@ impl SlabCache {
 			self.slabs_partial.push_front(Some(popped_node));
 		}
 
-		return Some(object_ptr);
+		Some(object_ptr)
 	}
 }

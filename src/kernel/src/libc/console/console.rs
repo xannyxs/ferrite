@@ -1,8 +1,8 @@
 use crate::{
 	arch::x86::cpu::reboot,
 	libc::console::bin::{gdt, idt},
-	print, println,
-	tty::{tty::WRITER, vga::VGA_HEIGHT},
+	print, print_serial, println, set_fg_color,
+	tty::{tty::WRITER, VGA_HEIGHT},
 };
 use core::str::from_utf8;
 
@@ -30,6 +30,8 @@ impl Default for Console {
 			buffer: [0; 256],
 			prompt: "[42]$ ",
 		};
+		set_fg_color!(VgaColour::White);
+
 		print!("{}", console.prompt);
 		return console;
 	}

@@ -1,3 +1,5 @@
+//! A doubly-linked list with owned nodes.
+
 use alloc::{alloc::Global, boxed::Box};
 use core::{alloc::Allocator, ptr::NonNull};
 
@@ -15,16 +17,16 @@ pub struct Node<T> {
 
 impl<T> Node<T> {
 	fn new(element: T) -> Self {
-		return Node {
+		Node {
 			next: None,
 			prev: None,
 			element,
-		};
+		}
 	}
 
 	#[allow(clippy::boxed_local)]
 	fn into_element<A: Allocator>(self: Box<Self, A>) -> T {
-		return self.element;
+		self.element
 	}
 }
 
@@ -64,7 +66,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
 			self.len -= 1;
 
-			return node;
+			node
 		})
 	}
 
@@ -87,7 +89,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
 			self.len -= 1;
 
-			return node;
+			node
 		})
 	}
 
@@ -177,7 +179,7 @@ impl<T> Default for LinkedList<T> {
 	/// Creates an empty `LinkedList<T>`.
 	#[inline]
 	fn default() -> Self {
-		return Self::new();
+		Self::new()
 	}
 }
 
@@ -194,12 +196,12 @@ impl<T> LinkedList<T> {
 	#[inline]
 	#[must_use]
 	pub const fn new() -> Self {
-		return LinkedList {
+		LinkedList {
 			head: None,
 			tail: None,
 			len: 0,
 			alloc: Global,
-		};
+		}
 	}
 }
 
@@ -217,26 +219,26 @@ impl<T, A: Allocator> LinkedList<T, A> {
 	/// ```
 	#[inline]
 	pub const fn new_in(alloc: A) -> Self {
-		return LinkedList {
+		LinkedList {
 			head: None,
 			tail: None,
 			len: 0,
 			alloc,
-		};
+		}
 	}
 
 	/// Returns `true` if the `LinkedList` is empty.
 	#[inline]
 	#[must_use]
 	pub fn is_empty(&self) -> bool {
-		return self.head.is_none();
+		self.head.is_none()
 	}
 
 	/// Returns the length of the `LinkedList`.
 	#[inline]
 	#[must_use]
 	pub fn len(&self) -> usize {
-		return self.len;
+		self.len
 	}
 
 	/// Removes all elements from the `LinkedList`.
@@ -290,13 +292,13 @@ impl<T, A: Allocator> LinkedList<T, A> {
 	/// Removes the first element and returns it, or `None` if the list is
 	/// empty.
 	pub fn pop_front(&mut self) -> Option<T> {
-		return self.pop_front_node().map(Node::into_element);
+		self.pop_front_node().map(Node::into_element)
 	}
 
 	/// Removes the last element from a list and returns it, or `None` if
 	/// it is empty.
 	pub fn pop_back(&mut self) -> Option<T> {
-		return self.pop_back_node().map(Node::into_element);
+		self.pop_back_node().map(Node::into_element)
 	}
 
 	/// Appends an element to the back of a list.
@@ -329,11 +331,11 @@ impl<T, A: Allocator> LinkedList<T, A> {
 	#[inline]
 	#[must_use]
 	pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T, A> {
-		return CursorMut {
+		CursorMut {
 			index: 0,
 			current: self.head,
 			list: self,
-		};
+		}
 	}
 }
 
@@ -393,7 +395,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
 	#[must_use]
 	pub fn index(&self) -> Option<usize> {
 		let _ = self.current?;
-		return Some(self.index);
+		Some(self.index)
 	}
 
 	/// Returns a reference to the element that the cursor is currently
@@ -463,7 +465,7 @@ impl<'a, T, A: Allocator> CursorMut<'_, T, A> {
 	#[must_use]
 	pub fn index(&self) -> Option<usize> {
 		let _ = self.current?;
-		return Some(self.index);
+		Some(self.index)
 	}
 
 	/// Moves the cursor to the next element of the `LinkedList`.
@@ -517,7 +519,7 @@ impl<'a, T, A: Allocator> CursorMut<'_, T, A> {
 			self.list.unlink_node(unlinked_node);
 
 			let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
-			return Some(unlinked_node.element);
+			Some(unlinked_node.element)
 		}
 	}
 }
