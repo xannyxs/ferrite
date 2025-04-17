@@ -134,25 +134,9 @@ pub extern "C" fn kernel_main(
     );
 	}
 
-	Logger::init(
-		"Memory Management",
-		Some("Starting memory subsystem initialization"),
-	);
-
-	Logger::init_step(
-		"Memory Detection",
-		"Reading memory map from bootloader",
-		true,
-	);
 	SERIAL.lock().init();
 
 	get_memory_region(boot_info);
-
-	Logger::init_step(
-		"Memblock Allocator",
-		"Initializing early memory allocator",
-		true,
-	);
 
 	{
 		let mut memblock = EARLY_PHYSICAL_ALLOCATOR.lock();
@@ -249,12 +233,12 @@ pub extern "C" fn kernel_main(
 
 	slab_cache_init();
 
-	{
-		EARLY_PHYSICAL_ALLOCATOR.lock().take();
+	EARLY_PHYSICAL_ALLOCATOR.lock().take();
 
-		if EARLY_PHYSICAL_ALLOCATOR.lock().get().is_some() {
-			panic!("EARLY_PHYSICAL_ALLOCATOR (memblock) has not been decommissioned.");
-		}
+	if EARLY_PHYSICAL_ALLOCATOR.lock().get().is_some() {
+		panic!(
+			"EARLY_PHYSICAL_ALLOCATOR (memblock) has not been decommissioned."
+		);
 	}
 
 	Logger::divider();
