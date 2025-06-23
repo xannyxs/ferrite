@@ -2,9 +2,10 @@
 //! nodes and a safe wrapper (`NodeAllocatorWrapper`) implementing the
 //! `Allocator` trait.
 
-use super::{allocator::NODE_POOL_ALLOCATOR, PhysAddr};
+use super::{allocator::NODE_POOL_ALLOCATOR, PhysAddr, VirtAddr};
 use crate::{
 	collections::linked_list::Node,
+	log_error,
 	memory::{allocator::EARLY_PHYSICAL_ALLOCATOR, PAGE_SIZE},
 	println_serial,
 	sync::Locked,
@@ -76,7 +77,7 @@ unsafe impl Allocator for NodeAllocatorWrapper {
 /// `Node<T>` instances for linked lists.
 #[derive(Debug)]
 pub struct NodePoolAllocator {
-	base: PhysAddr,
+	base: VirtAddr,
 	map: &'static mut [usize],
 	capacity: usize,
 	// NOTE: Consider storing node_size and node_align here too.
@@ -94,12 +95,9 @@ impl NodePoolAllocator {
 	/// * `capacity`: The total number of `Node<usize>`-sized slots the pool
 	///   should manage.
 	#[allow(clippy::expect_used)]
-	pub fn new(base: PhysAddr, capacity: usize) -> Self {
+	pub fn new(base: VirtAddr, capacity: usize) -> Self {
 		use core::ptr::with_exposed_provenance_mut;
 
-		// Ensure base address is suitable for storing Nodes (using Node<usize>
-		// as proxy) TODO: Parameterize or store actual Node size/align
-		// needed?
 		assert!(
 			base.as_usize() % align_of::<Node<usize>>() == 0,
 			"Node pool base address not aligned"
@@ -165,14 +163,14 @@ impl NodePoolAllocator {
 		const NODE_ALIGN: usize = align_of::<Node<usize>>();
 
 		if layout.size() != NODE_SIZE {
-			println_serial!(
+			log_error!(
                 "NodePoolAllocator::alloc: Incorrect size (expected {}, got {})",
                 NODE_SIZE, layout.size()
             );
 			return ptr::null_mut();
 		}
 		if layout.align() > NODE_ALIGN {
-			println_serial!(
+			log_error!(
                 "NodePoolAllocator::alloc: Incorrect alignment (max {}, requested {})",
                 NODE_ALIGN, layout.align()
             );
@@ -182,7 +180,7 @@ impl NodePoolAllocator {
 		match self.find_block() {
 			Some(index) => {
 				self.mark_allocated(index);
-				let addr: PhysAddr = self.base + (index * NODE_SIZE);
+				let addr = self.base + (index * NODE_SIZE);
 
 				println_serial!(
 					"NodePoolAllocator::alloc: Allocated block {}, Addr: {:#x}",
@@ -190,11 +188,11 @@ impl NodePoolAllocator {
 					addr.as_usize()
 				);
 
-				return ptr::with_exposed_provenance_mut(addr.as_usize());
+				ptr::with_exposed_provenance_mut(addr.as_usize())
 			}
 			None => {
-				println_serial!("NodePoolAllocator::alloc: Allocation failed - pool is full.");
-				return ptr::null_mut();
+				log_error!("Allocation failed - pool is full.");
+				ptr::null_mut()
 			}
 		}
 	}
@@ -221,7 +219,7 @@ impl NodePoolAllocator {
 			return;
 		}
 
-		let addr: PhysAddr = (ptr as usize).into();
+		let addr: VirtAddr = (ptr as usize).into();
 		let base_usize = self.base.as_usize();
 		let addr_usize = addr.as_usize();
 		let pool_end = base_usize.saturating_add(self.capacity * NODE_SIZE);

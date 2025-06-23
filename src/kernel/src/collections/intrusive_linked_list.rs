@@ -1,6 +1,7 @@
 //! Defines an intrusive doubly linked list implementation.
 //! Nodes (`IntrusiveNode`) are embedded within the structs they link (`T`).
 
+use crate::println_serial;
 use core::{
 	marker::PhantomData,
 	ptr::{self, NonNull},
@@ -89,6 +90,13 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.head.is_none()
+	}
+
+	/// Returns the length of the list
+	#[inline]
+	#[must_use]
+	pub fn len(&self) -> usize {
+		self.len
 	}
 
 	/// Removes the specified node from the list (safe wrapper).
@@ -207,6 +215,11 @@ impl<T: ?Sized> IntrusiveLinkedList<T> {
 		}
 
 		self.len -= 1;
+
+		if self.len == 0 {
+			self.head = None;
+			self.tail = None;
+		}
 
 		node.prev = None;
 		node.next = None;

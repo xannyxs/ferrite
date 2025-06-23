@@ -20,6 +20,7 @@ SECTIONS {
 
   /* Start at 2MB */
 	. = 0x2M;
+  _kernel_physical_start = .;
 
   .multiboot ALIGN(4K) : {
     KEEP(*(.multiboot))

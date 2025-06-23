@@ -2,7 +2,9 @@
 //! information structure provided by the bootloader.
 
 use crate::{
-	memory::{MemorySegment, RegionType, PAGE_SIZE},
+	memory::{
+		get_kernel_physical_end, MemorySegment, PhysAddr, RegionType, PAGE_SIZE,
+	},
 	println_serial,
 	sync::{mutex::MutexGuard, Locked},
 };
@@ -164,12 +166,12 @@ pub fn get_memory_region(boot_info: &MultibootInfo) {
 			}
 
 			let phys_addr = get_kernel_physical_end();
-			let mut addr = entry.addr as usize;
+			let mut addr = PhysAddr::new(entry.addr as usize);
 			let mut len = entry.len as usize;
 
 			if addr < phys_addr {
 				addr = phys_addr + PAGE_SIZE;
-				len = (entry.addr + entry.len) as usize - addr;
+				len = (entry.addr + entry.len) as usize - addr.as_usize();
 			}
 
 			G_SEGMENTS.lock()[count] =
@@ -207,7 +209,7 @@ pub fn get_biggest_available_segment_index() -> Option<usize> {
 
 	for (index, segment) in segments.iter().enumerate() {
 		if segment.segment_type() != RegionType::Available
-			|| segment.start_addr() == 0x0
+			|| segment.start_addr().as_usize() == 0x0
 		{
 			continue;
 		}
@@ -219,25 +221,4 @@ pub fn get_biggest_available_segment_index() -> Option<usize> {
 	}
 
 	return biggest_index;
-}
-
-/* -------------------------------------- */
-
-extern "C" {
-	static _kernel_virtual_end: u8;
-	static _kernel_physical_end: u8;
-}
-
-/// Function to get the physical end address of the kernel image.
-pub fn get_kernel_physical_end() -> usize {
-	unsafe {
-		return &_kernel_physical_end as *const u8 as usize;
-	}
-}
-
-/// Function to get the virtual end address of the kernel image.
-pub fn get_kernel_virtual_end() -> usize {
-	unsafe {
-		return &_kernel_virtual_end as *const u8 as usize;
-	}
 }

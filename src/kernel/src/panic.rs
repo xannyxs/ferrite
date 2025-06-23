@@ -6,6 +6,7 @@ use core::panic::PanicInfo;
 fn panic(info: &PanicInfo) -> ! {
 	with_fg_color!(VgaColour::Red, {
 		println!("{}", info);
+		println_serial!("{}", info);
 	});
 
 	loop {}
