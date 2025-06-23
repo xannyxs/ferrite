@@ -29,51 +29,34 @@ pub struct MemRegion {
 
 impl MemRegion {
 	/// Creates a new memory region with the specified base address and size.
-	///
-	/// # Parameters
-	/// * `base` - The starting physical address of the memory region
-	/// * `size` - The size of the memory region in bytes
-	///
-	/// # Returns
-	/// A new `MemRegion` instance representing the specified memory area
 	pub const fn new(base: PhysAddr, size: usize) -> Self {
-		return Self {
+		Self {
 			base,
 			size,
-		};
+		}
 	}
 
 	/// Checks if this memory region is empty (has zero size).
-	///
-	/// An empty region represents an unused slot in the memory region arrays.
-	///
-	/// # Returns
-	/// `true` if the region is empty, `false` otherwise
 	pub fn is_empty(&self) -> bool {
-		return *self == MemRegion::empty();
+		*self == MemRegion::empty()
 	}
 
 	/// Creates an empty memory region with zero base address and size.
-	///
-	/// Used to initialize memory region arrays and to represent unused slots.
-	///
-	/// # Returns
-	/// An empty `MemRegion` instance
 	pub const fn empty() -> Self {
-		return MemRegion {
+		MemRegion {
 			base: PhysAddr::new(0x0),
 			size: 0,
-		};
+		}
 	}
 
 	/// Returns the base of region
 	pub const fn base(&self) -> PhysAddr {
-		return self.base;
+		self.base
 	}
 
 	/// Returns size of region
 	pub const fn size(&self) -> usize {
-		return self.size;
+		self.size
 	}
 }
 
@@ -94,19 +77,16 @@ impl MemBlockAllocator {
 	///
 	/// Initializes the allocator with zero available and zero reserved memory
 	/// regions. This is typically called very early in the boot process.
-	///
-	/// # Returns
-	/// A new empty `MemBlockAllocator` instance
 	#[allow(clippy::new_without_default)]
 	pub const fn new() -> Self {
 		const EMPTY: MemRegion = MemRegion::empty();
 
-		return Self {
+		Self {
 			memory_region: [EMPTY; MAX_REGION],
 			reserved_region: [EMPTY; MAX_REGION],
 			memory_count: 0,
 			reserved_count: 0,
-		};
+		}
 	}
 
 	/// Creates a new memory block allocator with empty region arrays.
@@ -121,7 +101,7 @@ impl MemBlockAllocator {
 			#[allow(clippy::single_match)]
 			match segment.segment_type() {
 				RegionType::Available => {
-					if !self.add(segment.start_addr().into(), segment.size()) {
+					if !self.add(segment.start_addr(), segment.size()) {
 						panic!("memblock: MAX_COUNT is full in memory segment");
 					}
 				}
@@ -132,22 +112,22 @@ impl MemBlockAllocator {
 
 	/// Returns a reference of the current length of `mem_region`
 	pub const fn mem_count(&self) -> usize {
-		return self.memory_count;
+		self.memory_count
 	}
 
 	/// Returns a reference to the current `memregion`
 	pub const fn mem_region(&self) -> &[MemRegion; MAX_REGION] {
-		return &self.memory_region;
+		&self.memory_region
 	}
 
 	/// Returns a reference of the current length of `reserved_region`
 	pub const fn reserved_count(&self) -> usize {
-		return self.reserved_count;
+		self.reserved_count
 	}
 
 	/// Returns a reference to the current `reserved_region`
 	pub const fn reserved_region(&self) -> &[MemRegion; MAX_REGION] {
-		return &self.reserved_region;
+		&self.reserved_region
 	}
 
 	/// Allocates memory with the specified layout requirements.
@@ -167,10 +147,8 @@ impl MemBlockAllocator {
 	/// A pointer to the allocated memory or null if allocation fails
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		match self.find_free_region(layout.size(), layout.align()) {
-			Some(addr) => {
-				return ptr::with_exposed_provenance_mut(addr.as_usize())
-			}
-			None => return ptr::null_mut(),
+			Some(addr) => addr.as_mut_ptr(),
+			None => ptr::null_mut(),
 		}
 	}
 
@@ -187,30 +165,6 @@ impl MemBlockAllocator {
 	/// This function always panics if called
 	pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
 		panic!("memblock::dealloc: Should never been called");
-	}
-
-	fn sort_regions(&mut self, region_type: RegionType) {
-		let (regions, count) = match region_type {
-			RegionType::Available => {
-				(&mut self.memory_region, self.memory_count)
-			}
-			RegionType::Reserved => {
-				(&mut self.reserved_region, self.reserved_count)
-			}
-			_ => (&mut self.memory_region, self.memory_count),
-		};
-
-		for i in 1..count {
-			let key = regions[i];
-			let mut j = i;
-
-			while j > 0 && regions[j - 1].base > key.base {
-				regions[j] = regions[j - 1];
-				j -= 1;
-			}
-
-			regions[j] = key;
-		}
 	}
 
 	fn remove(&mut self, region_type: RegionType, index: usize) {
@@ -352,6 +306,6 @@ impl MemBlockAllocator {
 			return Some(aligned_addr);
 		}
 
-		return None;
+		None
 	}
 }

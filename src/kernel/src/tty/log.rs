@@ -29,6 +29,15 @@ pub fn _log(
 		LogLevel::Debug => ("[DEBUG]", VgaColour::LightGreen),
 	};
 
+	if LogLevel::Debug == level {
+		println_serial!(
+			"[{}] {} {}",
+			format_args!("{}", module),
+			level_str,
+			args
+		);
+	}
+
 	with_fg_color!(color, {
 		println!("[{}] {} {}", format_args!("{}", module), level_str, args);
 	});

@@ -103,8 +103,12 @@ impl BuddyAllocator {
 			LinkedList::new_in(NodeAllocatorWrapper);
 		let mut free_lists = [EMPTY_LIST; MAX_ORDERS];
 
+		println_serial!("BuddyAllocator::new: Initializing with base 0x{:x}, size {}, min_block_size {}, max_order {}",
+            base.as_usize(), size, min_block_size, max_order);
+
 		if blocks_count > 0 {
 			free_lists[max_order].push_back(base);
+			println_serial!("BuddyAllocator::new: Added initial block 0x{:x} to free_lists[{}]", base.as_usize(), max_order);
 		}
 
 		Self {
@@ -132,7 +136,14 @@ impl BuddyAllocator {
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		match self.find_free_block(layout) {
 			Some(block_addr) => {
-				ptr::with_exposed_provenance_mut(block_addr.as_usize())
+				let expected_align = layout.align().max(self.min_block_size);
+				if block_addr.as_usize() % expected_align != 0 {
+					println_serial!("BuddyAllocator::alloc: !!! WARNING: Returning misaligned physical address 0x{:x} for layout align {} (expected align {})",
+                           block_addr.as_usize(), layout.align(), expected_align);
+				} else {
+					println_serial!("BuddyAllocator::alloc: Returning aligned physical address 0x{:x}", block_addr.as_usize());
+				}
+				block_addr.as_mut_ptr()
 			}
 			None => ptr::null_mut(),
 		}
@@ -154,7 +165,8 @@ impl BuddyAllocator {
 	/// or freeing a pointer not allocated by this allocator results in
 	/// undefined behavior.
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-		let addr = (ptr as usize).into();
+		let addr: PhysAddr = (ptr as usize).into();
+		println_serial!("BuddyAllocator::dealloc: Deallocating physical address 0x{:x} with size {}, align {}", addr.as_usize(), layout.size(), layout.align());
 
 		let i = self.get_block_index(addr);
 		let required_size = layout.size().max(layout.align());
@@ -166,8 +178,10 @@ impl BuddyAllocator {
 				panic!("Layout implies an order larger than MAX_ORDERS during dealloc");
 			}
 		}
+		println_serial!("BuddyAllocator::dealloc: Calculated initial order {} for deallocation", order);
 
 		self.mark_free(i, order);
+		println_serial!("BuddyAllocator::dealloc: Marked index {} (addr 0x{:x}) as free in bitmap at order {}", i, addr.as_usize(), order);
 
 		let mut current_addr = addr;
 		let mut current_order = order;
@@ -176,15 +190,22 @@ impl BuddyAllocator {
 			let buddy_addr = self.find_buddy_addr(current_addr, current_order);
 			let buddy_index = self.get_block_index(buddy_addr);
 
+			println_serial!("BuddyAllocator::dealloc: Checking merge for block 0x{:x} (order {}). Buddy is 0x{:x} (index {})", current_addr.as_usize(), current_order, buddy_addr.as_usize(), buddy_index);
+
 			if !self.is_free(buddy_index, current_order) {
+				println_serial!("BuddyAllocator::dealloc: Buddy 0x{:x} (order {}) not free or mergable. Stopping merge.", buddy_addr.as_usize(), current_order);
 				break;
 			}
+
+			println_serial!("BuddyAllocator::dealloc: Merging block 0x{:x} (order {}) with buddy 0x{:x}", current_addr.as_usize(), current_order, buddy_addr.as_usize());
 
 			self.remove_from_free_list(buddy_addr, current_order);
 
 			current_addr = current_addr.min(buddy_addr);
 			current_order += 1;
 		}
+
+		println_serial!("BuddyAllocator::dealloc: Final merged block 0x{:x} added to free_lists[{}]", current_addr.as_usize(), current_order);
 		self.free_lists[current_order].push_back(current_addr);
 	}
 
@@ -281,6 +302,9 @@ impl BuddyAllocator {
 			if word >= self.map.len() {
 				panic!("Allocation address out of map bounds");
 			}
+
+			println_serial!("BuddyAllocator::mark_allocated: Marking index {} (addr 0x{:x}) to index {} as allocated (order {})",
+              i, addr.as_usize(), i + blocks_to_mark - 1, order);
 
 			self.map[word] |= mask;
 		}

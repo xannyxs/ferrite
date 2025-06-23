@@ -11,8 +11,14 @@ use crate::{
 	},
 	collections::linked_list::Node,
 	log_debug, log_info,
-	memory::{allocator, PhysAddr, PAGE_SIZE},
-	print_serial,
+	memory::{
+		allocator,
+		frame::FRAME_ALLOCATOR,
+		get_kernel_virtual_end,
+		paging::{flags, map_page},
+		FrameAllocator, PhysAddr, VirtAddr, NODE_POOL_VIRT_START, PAGE_SIZE,
+	},
+	print_serial, println_serial,
 	sync::Locked,
 };
 use core::{
@@ -21,9 +27,9 @@ use core::{
 	ptr,
 };
 
-const SLAB_CACHE_COUNT: usize = 8;
+const SLAB_CACHE_COUNT: usize = 9;
 const CACHE_SIZES: [usize; SLAB_CACHE_COUNT] =
-	[8, 16, 32, 64, 128, 256, 512, 1024];
+	[4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
 // 1. Define static for the EARLY allocator (MemBlock) NO #[global_allocator]
 //    attribute here!
@@ -65,7 +71,7 @@ unsafe impl GlobalAlloc for Locked<KernelAllocator> {
 		let index = CACHE_SIZES
 			.iter()
 			.position(|&cache_size| cache_size >= layout.size())
-			.expect("dealloc: No suitable cache found for size {}");
+			.expect("dealloc: No suitable cache found");
 
 		match SLAB_CACHES.lock().get_mut() {
 			Some(caches) => {
@@ -130,6 +136,15 @@ pub fn memory_init(boot_info: &MultibootInfo) {
 	}
 	log_debug!("Initialized Memblock",);
 
+	FRAME_ALLOCATOR.lock().get_or_init(FrameAllocator::new);
+	FRAME_ALLOCATOR
+		.lock()
+		.get_mut()
+		.expect("Frame Allocator not created yet")
+		.init();
+
+	log_debug!("Initialized Frame Allocator",);
+
 	let index =
 		get_biggest_available_segment_index().expect("No segment available");
 
@@ -154,15 +169,46 @@ pub fn memory_init(boot_info: &MultibootInfo) {
 		panic!("Failed to allocate node pool from MemBlock");
 	}
 
+	let kernel_end_addr = get_kernel_virtual_end();
+	let node_pool_virt_start = VirtAddr::new(NODE_POOL_VIRT_START);
+
+	log_debug!("Kernel virtual end: {:#x}", kernel_end_addr.as_usize());
+	log_debug!(
+		"Node Pool virtual start: {:#x}",
+		node_pool_virt_start.as_usize()
+	);
+
+	log_info!(
+		"Mapping Node Pool: VA {:#x} -> {:#x} (Size: {} bytes)",
+		node_pool_virt_start.as_usize(),
+		node_pool_virt_start.as_usize() + pool_layout.size(),
+		pool_layout.size()
+	);
+
+	let mut current_vaddr = node_pool_virt_start;
+	let end_vaddr = VirtAddr::new(NODE_POOL_VIRT_START + pool_layout.size());
+
+	while current_vaddr < end_vaddr {
+		let frame = FRAME_ALLOCATOR
+			.lock()
+			.get()
+			.expect("Frame Allocator does not exist")
+			.allocate_frame()
+			.expect("Failed to allocate frame for node pool");
+
+		map_page(frame, current_vaddr, flags::PRESENT | flags::WRITABLE);
+		current_vaddr = VirtAddr::new(current_vaddr.as_usize() + PAGE_SIZE);
+	}
+
 	let pool_base_addr: PhysAddr = (ptr as usize).into();
 	NODE_POOL_ALLOCATOR.lock().get_or_init(|| {
-		log_debug!(
-			"Initializing NodePoolAllocator at {:#x}",
-			pool_base_addr.as_usize()
-		);
-
-		NodePoolAllocator::new(pool_base_addr, needed_nodes)
+		NodePoolAllocator::new(node_pool_virt_start, needed_nodes)
 	});
+
+	log_debug!(
+		"Initializing NodePoolAllocator at {:#x}",
+		pool_base_addr.as_usize()
+	);
 
 	let base: PhysAddr = {
 		let guard = EARLY_PHYSICAL_ALLOCATOR.lock();

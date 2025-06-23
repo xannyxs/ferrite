@@ -1,5 +1,8 @@
 use super::cpu::reboot;
-use crate::{arch::x86::cpu::halt, println, println_serial};
+use crate::{
+	arch::x86::cpu::{cr2, halt},
+	println, println_serial,
+};
 
 pub type InterruptHandler = extern "x86-interrupt" fn(InterruptFrame);
 pub type InterruptHandlerWithError =
@@ -167,13 +170,28 @@ pub extern "x86-interrupt" fn page_fault(
 	frame: InterruptFrame,
 	error_code: u32,
 ) {
-	println!("EXCEPTION: PAGE FAULT EXCEPTION (#PF)");
-	println!("===============================");
+	println_serial!("EXCEPTION: PAGE FAULT");
+	println_serial!("=====================");
 
-	println!("Error Code: 0x{:04x}", error_code);
-	println!("Debug information: {:?}", frame);
-	println_serial!("Debug information: {:?}", frame);
+	let faulting_address = cr2();
 
+	println_serial!("Faulting Address: 0x{:x}", faulting_address.as_usize());
+	println_serial!("Error Code: 0x{:04x}", error_code);
+
+	if (error_code & 1) == 0 {
+		println_serial!("  - Reason: Page not present.");
+	} else {
+		println_serial!("  - Reason: Protection violation.");
+	}
+
+	// You can also interpret the error code bits for more info:
+	// bit 0: 0 = Supervisor, 1 = User mode
+	// bit 1: 0 = Read, 1 = Write
+	// bit 2: 0 = Not present, 1 = Protection violation
+	// ... and others
+
+	println_serial!("Interrupt Frame: {:?}", frame);
+	println_serial!("Halting.");
 	halt();
 }
 

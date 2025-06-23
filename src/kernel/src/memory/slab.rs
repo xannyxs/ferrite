@@ -3,8 +3,13 @@
 use super::{VirtAddr, PAGE_SIZE};
 use crate::{
 	collections::intrusive_linked_list::{IntrusiveLinkedList, IntrusiveNode},
-	log_error,
-	memory::allocator::BUDDY_PAGE_ALLOCATOR,
+	log_debug, log_error,
+	memory::{
+		allocate_dynamic_virt_range,
+		allocator::BUDDY_PAGE_ALLOCATOR,
+		paging::{flags, map_page, phys_to_virt},
+		PhysAddr,
+	},
 	println_serial,
 	sync::Locked,
 };
@@ -16,12 +21,13 @@ use core::{
 };
 
 #[derive(Debug)]
+#[repr(C)]
 struct Slab {
 	list: IntrusiveNode<Slab>,
+	first_free_object: Option<NonNull<u8>>,
 	cache: *const SlabCache,
 	base_vaddr: VirtAddr,
 	objects_in_use: usize,
-	first_free_object: Option<NonNull<u8>>,
 }
 
 /// Represents a single slab of memory containing multiple fixed-size objects.
@@ -67,7 +73,7 @@ impl SlabCache {
 	pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
 		use core::ptr;
 
-		assert!(layout.size() <= self.object_size);
+		debug_assert!(layout.size() <= self.object_size);
 
 		if !self.slabs_partial.is_empty() {
 			match self.slabs_partial.pop_front() {
@@ -87,12 +93,17 @@ impl SlabCache {
 			};
 		}
 
-		let ptr: *mut u8 = {
+		log_debug!("Creating a new cache...");
+
+		let size_to_alloc = (1 << self.slab_order) * PAGE_SIZE;
+		let vaddr_range = allocate_dynamic_virt_range(size_to_alloc)
+			.expect("Ran out of dynamic kernel virtual address space!");
+
+		let phys_ptr: *mut u8 = {
 			let mut buddy = BUDDY_PAGE_ALLOCATOR.lock();
 
 			match buddy.get_mut() {
 				Some(buddy) => {
-					let size_to_alloc = (1 << self.slab_order) * PAGE_SIZE;
 					let layout =
 						Layout::from_size_align(size_to_alloc, PAGE_SIZE)
 							.expect("Failed to create Buddy Layout");
@@ -103,20 +114,35 @@ impl SlabCache {
 			}
 		};
 
-		if ptr.is_null() {
-			println_serial!(
-				"Buddy allocator failed to provide memory for new slab!"
-			);
+		if phys_ptr.is_null() {
+			log_error!("Buddy allocator failed to provide memory for new slab");
 			return ptr::null_mut();
 		}
 
-		let addr: VirtAddr = (ptr as usize).into();
-		let slab_ptr = addr.as_mut_ptr::<Slab>();
+		let paddr_start: PhysAddr = (phys_ptr as usize).into();
+
+		for i in 0..(size_to_alloc / PAGE_SIZE) {
+			let current_paddr = paddr_start + i * PAGE_SIZE;
+			let current_vaddr = vaddr_range + i * PAGE_SIZE;
+			println_serial!(
+				"Mapping vAddr: 0x{:x} - pAddr: 0x{:x}",
+				current_vaddr.as_usize(),
+				current_paddr.as_usize()
+			);
+
+			map_page(
+				current_paddr,
+				current_vaddr,
+				flags::PRESENT | flags::WRITABLE,
+			);
+		}
+
+		let slab_ptr = vaddr_range.as_mut_ptr::<Slab>();
 		let slab_size = (1 << self.slab_order) * PAGE_SIZE;
 
 		let object_start =
-			(addr + size_of::<Slab>()).align_up(align_of::<usize>());
-		let object_end = addr + slab_size;
+			(vaddr_range + size_of::<Slab>()).align_up(align_of::<usize>());
+		let object_end = vaddr_range + slab_size;
 		let object_area_size = object_end.as_usize() - object_start.as_usize();
 
 		let objects_in_slab = object_area_size / self.object_size;
@@ -125,11 +151,12 @@ impl SlabCache {
 			.expect("Newly initialized slab has no free objects!")
 			.as_ptr();
 
-		let mut next_free_obj_option = None;
+		let mut next_free_object = None;
 		if objects_in_slab > 1 {
 			let next_free_raw =
 				unsafe { *(object_to_return_ptr as *const *mut u8) };
-			next_free_obj_option = NonNull::new(next_free_raw);
+			next_free_object = NonNull::new(next_free_raw);
+			println_serial!("Free Object: {:?}", next_free_object);
 		}
 
 		unsafe {
@@ -140,14 +167,14 @@ impl SlabCache {
 					cache: self as *const Self,
 					base_vaddr: object_start,
 					objects_in_use: 1,
-					first_free_object: next_free_obj_option,
+					first_free_object: next_free_object,
 				},
 			);
 		}
 
-		let node_ptr = unsafe { ptr::addr_of_mut!((*slab_ptr).list) };
+		let node_ptr = unsafe { &raw mut (*slab_ptr).list };
 
-		println_serial!(
+		log_debug!(
 			"Added new slab {:p} node {:p} to partial list",
 			slab_ptr,
 			node_ptr
@@ -174,21 +201,19 @@ impl SlabCache {
 	pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
 		use core::ptr;
 
-		debug_assert!(
-			layout.size() <= self.object_size,
-			"Layout size mismatch"
-		);
-		debug_assert!(!ptr.is_null(), "Attempted to deallocate null pointer");
-		debug_assert!(
+		assert!(layout.size() <= self.object_size, "Layout size mismatch");
+		assert!(!ptr.is_null(), "Attempted to deallocate null pointer");
+		assert!(
 			self.object_size >= mem::size_of::<usize>(),
 			"Object size too small for free list link"
 		);
 
-		let addr = ptr as usize;
+		let vaddr: VirtAddr = (ptr as usize).into();
 		let slab_alloc_size = (1 << self.slab_order) * PAGE_SIZE;
 
 		let mask = !(slab_alloc_size - 1);
-		let slab_ptr: *mut Slab = ptr::with_exposed_provenance_mut(addr & mask);
+		let slab_ptr: *mut Slab =
+			ptr::with_exposed_provenance_mut(vaddr.as_usize() & mask);
 
 		match unsafe { slab_ptr.as_mut() } {
 			Some(slab) => {
@@ -202,6 +227,8 @@ impl SlabCache {
 				slab.first_free_object = NonNull::new(ptr);
 
 				let node_ptr = NonNull::new(ptr::addr_of_mut!(slab.list));
+				log_debug!("SlabCache::dealloc: ptr={:p}, slab={:p}, obj_in_use={}, moving slab node {:?}",
+                ptr, slab_ptr, slab.objects_in_use, node_ptr);
 				if slab.objects_in_use == self.objects_per_slab {
 					self.slabs_full.remove(node_ptr);
 					self.slabs_partial.push_back(node_ptr);
@@ -235,8 +262,8 @@ impl SlabCache {
 	/// Panics if the calculated slab size is too small to hold even one object
 	/// plus the required `Slab` metadata.
 	pub fn new(size: usize, slab_order: usize) -> Self {
-		let object_align = mem::align_of::<usize>();
-		let metadata_size = mem::size_of::<Slab>();
+		let object_align = align_of::<usize>();
+		let metadata_size = size_of::<Slab>();
 		let slab_size = PAGE_SIZE << slab_order;
 
 		let offset = (metadata_size + object_align - 1) & !(object_align - 1);
@@ -275,6 +302,13 @@ impl SlabCache {
 			return None;
 		}
 
+		println_serial!(
+			"setup_free_list: start=0x{:x}, count={}, object_size={}",
+			start.as_usize(),
+			count,
+			self.object_size
+		);
+
 		let mut current_ptr = start.as_mut_ptr::<u8>();
 		for i in 0..(count - 1) {
 			let next_ptr_val = start.add((i + 1) * self.object_size);
@@ -294,6 +328,7 @@ impl SlabCache {
 		mut popped_node: NonNull<IntrusiveNode<Slab>>,
 	) -> Option<*mut u8> {
 		let slab = unsafe { popped_node.as_mut().container_mut()? };
+		println_serial!("Slab: {:?}", slab);
 
 		let object_ptr = slab.first_free_object.take()?.as_ptr();
 
@@ -305,7 +340,7 @@ impl SlabCache {
 		slab.objects_in_use += 1;
 
 		if slab.objects_in_use == self.objects_per_slab {
-			println_serial!("Slab {:p} became full", popped_node.as_ptr());
+			println_serial!("Slab {:p} is full", popped_node.as_ptr());
 			self.slabs_full.push_front(Some(popped_node));
 		} else {
 			self.slabs_partial.push_front(Some(popped_node));

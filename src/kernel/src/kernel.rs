@@ -64,11 +64,12 @@ pub mod tests;
 /// TTY Support - Specifically VGA
 pub mod tty;
 
+use alloc::boxed::Box;
 use arch::x86::multiboot::MultibootInfo;
 use core::ffi::c_void;
 use device::keyboard::Keyboard;
 use libc::console::console::Console;
-use memory::allocator::memory_init;
+use memory::{allocator::memory_init, frame::FRAME_ALLOCATOR, FrameAllocator};
 use tty::serial::SERIAL;
 
 extern crate alloc;
@@ -104,6 +105,11 @@ pub extern "C" fn kernel_main(
 
 	#[cfg(test)]
 	test_main();
+
+	let test1 = Box::new("Test 1");
+	let test2 = Box::new(10);
+
+	println_serial!("{} - {}", test1, test2);
 
 	loop {
 		let c = match keyboard.input() {
