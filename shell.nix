@@ -1,12 +1,15 @@
-{
-  pkgs ? import <nixpkgs> { },
-}:
+{ }:
 
 let
-  crossToolchain = pkgs.pkgsCross.i686-embedded.buildPackages.gcc;
+  pinnedPkgs =
+    import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz")
+      { };
+
+  crossToolchain = pinnedPkgs.pkgsCross.i686-embedded.buildPackages.gcc;
+
 in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
+pinnedPkgs.mkShell {
+  buildInputs = with pinnedPkgs; [
     crossToolchain
     nasm
     gdb
@@ -31,6 +34,6 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    echo "Development environment ready!"
+    echo "✅ Development environment from nixpkgs 23.11 is ready!"
   '';
 }

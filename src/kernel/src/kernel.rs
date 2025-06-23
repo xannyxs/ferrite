@@ -78,11 +78,11 @@ extern crate alloc;
 
 const MAGIC_VALUE: u32 = 0x2badb002;
 
-/* extern "C" {
-	fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+extern "C" {
+	/* fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
 	fn memset(str: *mut c_void, c: i32, len: usize) -> *mut c_void;
-	fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> i32;
-} */
+	fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> i32; */
+}
 
 /* -------------------------------------- */
 
